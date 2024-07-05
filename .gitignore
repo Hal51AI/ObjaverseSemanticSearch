@@ -4,12 +4,6 @@
 # vscode directory
 .vscode/
 
-# docker compose file
-docker-compose.yml
-
-# env files
-.env
-
 ### Linux ###
 *~
 
@@ -181,7 +175,6 @@ celerybeat.pid
 *.sage.py
 
 # Environments
-.env
 .venv
 env/
 venv/
