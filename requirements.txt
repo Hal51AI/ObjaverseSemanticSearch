@@ -1,0 +1,6 @@
+faiss-cpu
+fastapi
+gunicorn
+objaverse
+pydantic_settings
+sentence-transformers
