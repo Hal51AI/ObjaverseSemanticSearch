@@ -11,7 +11,10 @@ class SimilarityBase(ABC):
 
     @classmethod
     def from_embeddings(
-        cls, captions_file: str, embeddings_file: str
+        cls,
+        captions_file: str,
+        embeddings_file: str,
+        sentence_transformer_model: str = "all-MiniLM-L6-v2",
     ) -> "SimilarityBase":
         """
         Instantiate a class by loading embeddings from a file
@@ -24,7 +27,11 @@ class SimilarityBase(ABC):
             The file containing embeddings as an npy file
         """
         embeddings = np.load(embeddings_file).astype(np.float32)
-        return cls(captions_file, embeddings=embeddings)
+        return cls(
+            captions_file,
+            embeddings=embeddings,
+            sentence_transformer_model=sentence_transformer_model
+        )
 
     @abstractmethod
     def save_embeddings(self, output_file: str) -> None:

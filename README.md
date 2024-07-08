@@ -16,7 +16,7 @@ First you must create an embeddings file. By default it will be saved to `./data
 python create_embeddings.npy
 ```
 
-There are 700k descriptions for embeddings generation, so please be patient, it can take anywhere from 10-30 minutes depending on the amount of compute power you have.
+There are 700k descriptions for embeddings generation, so please be patient, it can take up to an hour depending on the amount of compute power you have.
 
 If embeddings aren't created, the app will automatically generate the file before running. But the most effective way is to create the embeddings beforehand. 
 

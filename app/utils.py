@@ -1,10 +1,27 @@
 import os
 
+import numpy as np
+import pandas as pd
+from sentence_transformers import SentenceTransformer
+
 from .similarity import BERTSimilarityNN
 
 
+def create_embeddings(
+    captions_file: str, embeddings_file: str, sentence_transformer_model: str
+) -> None:
+    df = pd.read_csv(captions_file, delimiter=";")
+    model = SentenceTransformer(sentence_transformer_model)
+
+    print("Creating embeddings")
+    embeddings = model.encode(list(df.top_aggregate_caption), show_progress_bar=True)
+
+    print(f"Saving Embeddings to {embeddings_file}")
+    np.save(embeddings_file, embeddings)
+
+
 def create_similarity_model(
-    captions_file: str, embeddings_file: str
+    captions_file: str, embeddings_file: str, sentence_transformer_model: str
 ) -> BERTSimilarityNN:
     """
     Create or load a BERTSimilarity model based on the provided embeddings and captions.
@@ -34,12 +51,10 @@ def create_similarity_model(
         raise FileNotFoundError(f"Could not find captions file at {captions_file}")
 
     if not os.path.isfile(embeddings_file):
-        print("Creating Embeddings")
-        sim_model = BERTSimilarityNN(captions_file)
+        create_embeddings(captions_file, embeddings_file, sentence_transformer_model)
 
-        print(f"Saving Embeddings at {embeddings_file}")
-        sim_model.save_embeddings(embeddings_file)
-    else:
-        sim_model = BERTSimilarityNN.from_embeddings(captions_file, embeddings_file)
+    sim_model = BERTSimilarityNN.from_embeddings(
+        captions_file, embeddings_file, sentence_transformer_model
+    )
 
     return sim_model

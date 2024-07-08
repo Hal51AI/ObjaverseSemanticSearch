@@ -31,6 +31,8 @@ class BERTSimilarity(SimilarityBase):
     embeddings: np.ndarray, optional
         Precomputed embeddings for the captions.
         If not provided, embeddings will be computed using the BERT model.
+    sentence_transformer_model: str
+        The name of the model to use from sentence transformers
 
     Attributes
     ==========
@@ -45,15 +47,21 @@ class BERTSimilarity(SimilarityBase):
     """
 
     def __init__(
-        self, captions_file: str, embeddings: Optional[np.ndarray] = None
+        self,
+        captions_file: str,
+        embeddings: Optional[np.ndarray] = None,
+        sentence_transformer_model: str = "all-MiniLM-L6-v2",
     ) -> None:
         self.captions_file = captions_file
         self.df = pd.read_csv(captions_file, delimiter=";")
-        self.model = SentenceTransformer("bert-base-nli-mean-tokens")
+        self.sentence_transformer_model = sentence_transformer_model
+        self.model = SentenceTransformer(sentence_transformer_model)
         if isinstance(embeddings, np.ndarray):
             self.embeddings = embeddings
         else:
-            self.embeddings = self.model.encode(list(self.df.top_aggregate_caption))
+            self.embeddings = self.model.encode(
+                list(self.df.top_aggregate_caption), show_progress_bar=True
+            )
 
     def save_embeddings(self, output_file: str) -> None:
         """
@@ -131,6 +139,8 @@ class BERTSimilarityNN(SimilarityBase):
     embeddings: np.ndarray, optional
         Precomputed embeddings for the captions.
         If not provided, embeddings will be computed using the BERT model.
+    sentence_transformer_model: str
+        The name of the model to use from sentence transformers
 
     Attributes
     ==========
@@ -147,14 +157,21 @@ class BERTSimilarityNN(SimilarityBase):
     """
 
     def __init__(
-        self, captions_file: str, embeddings: Optional[np.ndarray] = None
+        self,
+        captions_file: str,
+        embeddings: Optional[np.ndarray] = None,
+        sentence_transformer_model: str = "all-MiniLM-L6-v2",
     ) -> None:
         self.captions_file = captions_file
         self.df = pd.read_csv(captions_file, delimiter=";")
-        self.model = SentenceTransformer("bert-base-nli-mean-tokens")
+        self.sentence_transformer_model = sentence_transformer_model
+        self.model = SentenceTransformer(sentence_transformer_model)
 
         if not isinstance(embeddings, np.ndarray):
-            embeddings = self.model.encode(list(self.df.top_aggregate_caption))
+            embeddings = self.model.encode(
+                list(self.df.top_aggregate_caption),
+                show_progress_bar=True,
+            )
 
         self.quantizer = faiss.IndexScalarQuantizer(
             embeddings.shape[-1],
@@ -179,7 +196,9 @@ class BERTSimilarityNN(SimilarityBase):
         output_file: str
             File to save to
         """
-        embeddings = self.model.encode(list(self.df.top_aggregate_caption))
+        embeddings = self.model.encode(
+            list(self.df.top_aggregate_caption), show_progress_bar=True
+        )
         np.save(output_file, embeddings)
 
     def search(self, query: str, top_k: int = 10) -> Dict[str, float]:

@@ -12,7 +12,11 @@ app = FastAPI(
 )
 
 
-sim_model = create_similarity_model(settings.CAPTIONS_FILE, settings.EMBEDDINGS_FILE)
+sim_model = create_similarity_model(
+    settings.CAPTIONS_FILE,
+    settings.EMBEDDINGS_FILE,
+    settings.SENTENCE_TRANSFORMER_MODEL,
+)
 
 
 @app.get("/similarity")
