@@ -1,4 +1,3 @@
-import operator
 import random
 from typing import Dict, Optional
 
@@ -40,6 +39,8 @@ class BERTSimilarity(SimilarityBase):
         The file path to the captions CSV file
     df: pandas.DataFrame
         DataFrame containing the data from the CSV file.
+    sentence_transformer_model: str
+        The name of the model used from sentence transformers
     model: SentenceTransformer
         BERT model for generating embeddings.
     embeddings: np.ndarray
@@ -115,13 +116,16 @@ class BERTSimilarity(SimilarityBase):
         Dict[str, str]
             A random file from the top matching query result
         """
-        query_str = max(self.search(query), key=operator.itemgetter(1))
-        top_match_df = self.df[self.df.top_aggregate_caption.str.fullmatch(query_str)]
+        results = self.search(query, top_k=10)
+        match_df = self.df[
+            self.df.top_aggregate_caption.str.fullmatch("|".join(results))
+        ]
+        weights = softmax(
+            match_df.top_aggregate_caption.map(results) * match_df.probability
+        )
 
         # grab a random item from the objects weighted by the softmax probability
-        selection = random.choices(
-            top_match_df.object_uid.tolist(), weights=softmax(top_match_df.probability)
-        )
+        selection = random.choices(match_df.object_uid.tolist(), weights=weights)
 
         return objaverse.load_objects(selection)
 
@@ -148,6 +152,8 @@ class BERTSimilarityNN(SimilarityBase):
         The file path to the captions CSV file
     df: pandas.DataFrame
         DataFrame containing the data from the CSV file.
+    sentence_transformer_model: str
+        The name of the model used from sentence transformers
     model: SentenceTransformer
         BERT model for generating embeddings.
     quantizer: faiss.IndexFlatIP
@@ -247,12 +253,15 @@ class BERTSimilarityNN(SimilarityBase):
         Dict[str, str]
             A random file from the top matching query result
         """
-        query_str = max(self.search(query), key=operator.itemgetter(1))
-        top_match_df = self.df[self.df.top_aggregate_caption.str.fullmatch(query_str)]
+        results = self.search(query, top_k=10)
+        match_df = self.df[
+            self.df.top_aggregate_caption.str.fullmatch("|".join(results))
+        ]
+        weights = softmax(
+            match_df.top_aggregate_caption.map(results) * match_df.probability
+        )
 
         # grab a random item from the objects weighted by the softmax probability
-        selection = random.choices(
-            top_match_df.object_uid.tolist(), weights=softmax(top_match_df.probability)
-        )
+        selection = random.choices(match_df.object_uid.tolist(), weights=weights)
 
         return objaverse.load_objects(selection)
