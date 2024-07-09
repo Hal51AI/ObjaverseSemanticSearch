@@ -6,16 +6,15 @@ from fastapi import FastAPI, Response
 from .config import settings
 from .utils import create_similarity_model
 
-app = FastAPI(
-    title="ObjaverseSemanticSearch",
-    summary="Perform semantic search over objaverse and download 3d models",
-)
-
-
 sim_model = create_similarity_model(
     settings.CAPTIONS_FILE,
     settings.EMBEDDINGS_FILE,
     settings.SENTENCE_TRANSFORMER_MODEL,
+)
+
+app = FastAPI(
+    title="ObjaverseSemanticSearch",
+    summary="Perform semantic search over objaverse and download 3d models",
 )
 
 

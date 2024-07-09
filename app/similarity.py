@@ -9,6 +9,7 @@ from scipy.special import softmax
 from sentence_transformers import SentenceTransformer
 
 from .abc import SimilarityBase
+from .db import create_db, query_db_match
 
 
 class BERTSimilarity(SimilarityBase):
@@ -39,6 +40,8 @@ class BERTSimilarity(SimilarityBase):
         The file path to the captions CSV file
     df: pandas.DataFrame
         DataFrame containing the data from the CSV file.
+    db_path: str
+        A path to the sqlite3 database file created from dataframe
     sentence_transformer_model: str
         The name of the model used from sentence transformers
     model: SentenceTransformer
@@ -55,6 +58,7 @@ class BERTSimilarity(SimilarityBase):
     ) -> None:
         self.captions_file = captions_file
         self.df = pd.read_csv(captions_file, delimiter=";")
+        self.db_path = create_db(self.df)
         self.sentence_transformer_model = sentence_transformer_model
         self.model = SentenceTransformer(sentence_transformer_model)
         if isinstance(embeddings, np.ndarray):
@@ -117,9 +121,7 @@ class BERTSimilarity(SimilarityBase):
             A random file from the top matching query result
         """
         results = self.search(query, top_k=10)
-        match_df = self.df[
-            self.df.top_aggregate_caption.str.fullmatch("|".join(results))
-        ]
+        match_df = query_db_match(self.db_path, list(results))
         weights = softmax(
             match_df.top_aggregate_caption.map(results) * match_df.probability
         )
@@ -152,6 +154,8 @@ class BERTSimilarityNN(SimilarityBase):
         The file path to the captions CSV file
     df: pandas.DataFrame
         DataFrame containing the data from the CSV file.
+    db_path: str
+        A path to the sqlite3 database file created from dataframe
     sentence_transformer_model: str
         The name of the model used from sentence transformers
     model: SentenceTransformer
@@ -170,6 +174,7 @@ class BERTSimilarityNN(SimilarityBase):
     ) -> None:
         self.captions_file = captions_file
         self.df = pd.read_csv(captions_file, delimiter=";")
+        self.db_path = create_db(self.df)
         self.sentence_transformer_model = sentence_transformer_model
         self.model = SentenceTransformer(sentence_transformer_model)
 
@@ -254,9 +259,7 @@ class BERTSimilarityNN(SimilarityBase):
             A random file from the top matching query result
         """
         results = self.search(query, top_k=10)
-        match_df = self.df[
-            self.df.top_aggregate_caption.str.fullmatch("|".join(results))
-        ]
+        match_df = query_db_match(self.db_path, list(results))
         weights = softmax(
             match_df.top_aggregate_caption.map(results) * match_df.probability
         )
