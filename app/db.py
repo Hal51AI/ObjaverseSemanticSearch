@@ -70,6 +70,6 @@ def query_db_match(
             SELECT *
             FROM {table_name}
             WHERE {col_name}
-            IN ({",".join(["?" for _ in match_list])})
+            IN ({",".join(["?" for _ in match_list])});
         """
         return pd.read_sql_query(query_str, con, params=match_list)
