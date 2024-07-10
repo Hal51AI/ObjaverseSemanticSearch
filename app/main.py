@@ -1,11 +1,11 @@
 import os
 import pathlib
-import shutil
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Response
 
 from .config import settings
+from .db import query_db_match
 from .utils import create_similarity_model
 
 
@@ -15,6 +15,11 @@ async def lifespan(app: FastAPI):
     Create a model and bind it to the fastapi object.
     When app is shutdown, also deletes the created database object
     as a cleanup action.
+
+    Parameters
+    ==========
+    app: FastAPI
+        Application object from fastapi
     """
     app.state.model = create_similarity_model(
         settings.CAPTIONS_FILE,
@@ -34,12 +39,9 @@ app = FastAPI(
 
 
 @app.get("/similarity")
-def similarity(query: str, top_k: int = 10):
-    results = app.state.model.search(query, top_k=top_k)
-
-    pat = "|".join(list(results.keys()))
-    matches = app.state.model.df.top_aggregate_caption.str.fullmatch(pat)
-    match_df = app.state.model.df[matches]
+async def similarity(query: str, top_k: int = 10):
+    results = await app.state.model.search(query, top_k=top_k)
+    match_df = await query_db_match(app.state.model.db_path, list(results))
 
     records = []
     for match, group_df in sorted(
@@ -59,12 +61,8 @@ def similarity(query: str, top_k: int = 10):
     response_class=Response,
     responses={200: {"content": {"model/gltf-binary": {}}}},
 )
-def glb(query: str):
-    result = app.state.model.download(query)
+async def glb(query: str):
+    result = await app.state.model.download(query)
     filepath = pathlib.Path(list(result.values())[0])
     file_bytes = filepath.read_bytes()
-
-    # remove downloaded file after reading
-    shutil.rmtree(filepath.parent)
-
     return Response(file_bytes, media_type="model/gltf-binary")

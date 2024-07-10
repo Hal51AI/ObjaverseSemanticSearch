@@ -2,6 +2,7 @@ import sqlite3
 import tempfile
 from typing import List
 
+import aiosqlite
 import pandas as pd
 
 
@@ -39,7 +40,7 @@ def create_db(
     return temp_db.name
 
 
-def query_db_match(
+async def query_db_match(
     db_path: str,
     match_list: List[str],
     table_name: str = "objaverse",
@@ -65,11 +66,15 @@ def query_db_match(
     pd.DataFrame
         A dataframe created out of the matches from the database
     """
-    with sqlite3.connect(db_path) as con:
+    async with aiosqlite.connect(db_path) as con:
         query_str = f"""
             SELECT *
             FROM {table_name}
             WHERE {col_name}
             IN ({",".join(["?" for _ in match_list])});
         """
-        return pd.read_sql_query(query_str, con, params=match_list)
+        async with con.execute(query_str, match_list) as cur:
+            rows = await cur.fetchall()
+            columns = [i[0] for i in cur.description]
+
+    return pd.DataFrame(rows, columns=columns)

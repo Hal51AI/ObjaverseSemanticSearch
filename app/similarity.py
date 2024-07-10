@@ -7,6 +7,7 @@ import objaverse
 import pandas as pd
 from scipy.special import softmax
 from sentence_transformers import SentenceTransformer
+from starlette.concurrency import run_in_threadpool
 
 from .abc import SimilarityBase
 from .db import create_db, query_db_match
@@ -79,7 +80,10 @@ class BERTSimilarity(SimilarityBase):
         """
         np.save(output_file, self.embeddings)
 
-    def search(self, query: str, top_k: int = 10) -> Dict[str, float]:
+    async def search(self, query: str, top_k: int = 10) -> Dict[str, float]:
+        return await run_in_threadpool(self.search_sync, query, top_k)
+
+    def search_sync(self, query: str, top_k: int = 10) -> Dict[str, float]:
         """
         This method searches for the most similar captions to a given query
         and returns a dictionary containing the captions and their similarity scores.
@@ -104,7 +108,7 @@ class BERTSimilarity(SimilarityBase):
 
         return {di[i]: float(i) for i in top_arr}
 
-    def download(self, query: str) -> Dict[str, str]:
+    async def download(self, query: str) -> Dict[str, str]:
         """
         This method downloads a random selection from the most similar captions found
         through the similarity search. It then returns a dictionary containing
@@ -120,8 +124,8 @@ class BERTSimilarity(SimilarityBase):
         Dict[str, str]
             A random file from the top matching query result
         """
-        results = self.search(query, top_k=10)
-        match_df = query_db_match(self.db_path, list(results))
+        results = await self.search(query, top_k=10)
+        match_df = await query_db_match(self.db_path, list(results))
         weights = softmax(
             match_df.top_aggregate_caption.map(results) * match_df.probability
         )
@@ -129,7 +133,7 @@ class BERTSimilarity(SimilarityBase):
         # grab a random item from the objects weighted by the softmax probability
         selection = random.choices(match_df.object_uid.tolist(), weights=weights)
 
-        return objaverse.load_objects(selection)
+        return await run_in_threadpool(objaverse.load_objects, selection)
 
 
 class BERTSimilarityNN(SimilarityBase):
@@ -212,7 +216,10 @@ class BERTSimilarityNN(SimilarityBase):
         )
         np.save(output_file, embeddings)
 
-    def search(self, query: str, top_k: int = 10) -> Dict[str, float]:
+    async def search(self, query: str, top_k: int = 10) -> Dict[str, float]:
+        return await run_in_threadpool(self.search_sync, query, top_k)
+
+    def search_sync(self, query: str, top_k: int = 10) -> Dict[str, float]:
         """
         This method searches for the most similar captions to a given query
         and returns a dictionary containing the captions and their similarity scores.
@@ -242,7 +249,7 @@ class BERTSimilarityNN(SimilarityBase):
         results = dict(zip(found_captions, [float(i) for i in dist[0]]))
         return dict(sorted(results.items(), key=lambda x: x[1], reverse=True)[:top_k])
 
-    def download(self, query: str) -> Dict[str, str]:
+    async def download(self, query: str) -> Dict[str, str]:
         """
         This method downloads a random selection from the most similar captions found
         through the similarity search. It then returns a dictionary containing
@@ -258,8 +265,8 @@ class BERTSimilarityNN(SimilarityBase):
         Dict[str, str]
             A random file from the top matching query result
         """
-        results = self.search(query, top_k=10)
-        match_df = query_db_match(self.db_path, list(results))
+        results = await self.search(query, top_k=10)
+        match_df = await query_db_match(self.db_path, list(results))
         weights = softmax(
             match_df.top_aggregate_caption.map(results) * match_df.probability
         )
@@ -267,4 +274,4 @@ class BERTSimilarityNN(SimilarityBase):
         # grab a random item from the objects weighted by the softmax probability
         selection = random.choices(match_df.object_uid.tolist(), weights=weights)
 
-        return objaverse.load_objects(selection)
+        return await run_in_threadpool(objaverse.load_objects, selection)

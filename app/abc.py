@@ -30,7 +30,7 @@ class SimilarityBase(ABC):
         return cls(
             captions_file,
             embeddings=embeddings,
-            sentence_transformer_model=sentence_transformer_model
+            sentence_transformer_model=sentence_transformer_model,
         )
 
     @abstractmethod
@@ -45,7 +45,7 @@ class SimilarityBase(ABC):
         """
 
     @abstractmethod
-    def search(self, query: str, top_k: int = 10) -> Dict[str, np.float32]:
+    async def search(self, query: str, top_k: int = 10) -> Dict[str, np.float32]:
         """
         Method for searching similar captions. It must return a dictionary where the
         keys are the matching queries as a string and the values are similarity
@@ -65,7 +65,7 @@ class SimilarityBase(ABC):
         """
 
     @abstractmethod
-    def download(self, query: str) -> Dict[str, str]:
+    async def download(self, query: str) -> Dict[str, str]:
         """
         Method for downloading the most similar glb file from the similarity score.
         Returns a dictionary where the keys are the glb file id's and the values
