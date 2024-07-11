@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    CAPTIONS_FILE: str = "data/pali_captions.csv"
+    CAPTIONS_FILE: str = "data/pali_captions_with_likes.csv"
     EMBEDDINGS_FILE: str = "data/embeddings.npy"
     SENTENCE_TRANSFORMER_MODEL: str = "all-MiniLM-L6-v2"
 

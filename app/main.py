@@ -6,6 +6,7 @@ from fastapi import FastAPI, Response
 
 from .config import settings
 from .db import query_db_match
+from .similarity import BERTSimilarityNN
 from .utils import create_similarity_model
 
 
@@ -25,6 +26,7 @@ async def lifespan(app: FastAPI):
         settings.CAPTIONS_FILE,
         settings.EMBEDDINGS_FILE,
         settings.SENTENCE_TRANSFORMER_MODEL,
+        BERTSimilarityNN,
     )
     yield
     if os.path.exists(app.state.model.db_path):

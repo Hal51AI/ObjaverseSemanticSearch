@@ -11,6 +11,7 @@ from starlette.concurrency import run_in_threadpool
 
 from .abc import SimilarityBase
 from .db import create_db, query_db_match
+from .utils import check_compatibility
 
 
 class BERTSimilarity(SimilarityBase):
@@ -68,6 +69,8 @@ class BERTSimilarity(SimilarityBase):
             self.embeddings = self.model.encode(
                 list(self.df.top_aggregate_caption), show_progress_bar=True
             )
+        
+        check_compatibility(self.df, self.embeddings, self.model)
 
     def save_embeddings(self, output_file: str) -> None:
         """
@@ -216,6 +219,8 @@ class BERTSimilarityNN(SimilarityBase):
         self.index.train(embeddings)
         self.index.add(embeddings)
         self.index.nprobe = 16
+
+        check_compatibility(self.df, embeddings, self.model)
 
     def save_embeddings(self, output_file: str) -> None:
         """

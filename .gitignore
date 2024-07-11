@@ -1,6 +1,9 @@
 # Created by https://www.toptal.com/developers/gitignore/api/python,linux,windows,macos
 # Edit at https://www.toptal.com/developers/gitignore?templates=python,linux,windows,macos
 
+# dotenv
+.env
+
 # vscode directory
 .vscode/
 
