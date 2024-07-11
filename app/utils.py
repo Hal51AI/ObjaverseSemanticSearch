@@ -17,6 +17,18 @@ logger = logging.getLogger("uvicorn")
 def create_embeddings(
     captions_file: str, embeddings_file: str, sentence_transformer_model: str
 ) -> None:
+    """
+    Create sentence embeddings from a CSV file of captions and save them to a file.
+
+    Parameters
+    ==========
+    captions_file: str
+        The file path to the captions data. Must a semicolon delimeted.
+    embeddings_path: str
+        A file path to save to embeddings to
+    sentence_transformer_model: str
+        The name of the sentence transformer model to build embeddings from.
+    """
     df = pd.read_csv(captions_file, delimiter=";")
     model = SentenceTransformer(sentence_transformer_model)
 
@@ -46,6 +58,10 @@ def create_similarity_model(
         The file path to the captions data used for creating the similarity model.
     embeddings_path: str
         The file path where embeddings should be saved or loaded from.
+    sentence_transformer_model: str
+        A string for the sentence transformer model to load.
+        Find all the different models that you can use here.
+            https://sbert.net/docs/sentence_transformer/pretrained_models.html#original-models
     similarity_model_cls: Type[SimilarityBase]
         A concrete implementation of the SimilarityBase class to instantiate
 
@@ -77,7 +93,7 @@ def check_compatibility(
 ) -> None:
     """
     Check the compatibility between a dataset, its embeddings, and
-    a sentence transformer model output layer.
+    the sentence transformer model output layer.
 
     This function ensures that the dataset size matches the size of the
     embeddings and that the embedding dimensions are compatible with the

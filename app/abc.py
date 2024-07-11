@@ -34,17 +34,6 @@ class SimilarityBase(ABC):
         )
 
     @abstractmethod
-    def save_embeddings(self, output_file: str) -> None:
-        """
-        Method to save embeddings to a file specified as `output_file`
-
-        Parameters
-        ==========
-        output_file: str
-            File to save to
-        """
-
-    @abstractmethod
     async def search(self, query: str, top_k: int = 10) -> Dict[str, np.float32]:
         """
         Method for searching similar captions. It must return a dictionary where the

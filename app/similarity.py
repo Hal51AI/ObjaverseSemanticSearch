@@ -69,19 +69,8 @@ class BERTSimilarity(SimilarityBase):
             self.embeddings = self.model.encode(
                 list(self.df.top_aggregate_caption), show_progress_bar=True
             )
-        
+
         check_compatibility(self.df, self.embeddings, self.model)
-
-    def save_embeddings(self, output_file: str) -> None:
-        """
-        Save embeddings to npy file
-
-        Parameters
-        ==========
-        output_file: str
-            File to save to
-        """
-        np.save(output_file, self.embeddings)
 
     async def search(self, query: str, top_k: int = 10) -> Dict[str, float]:
         """
@@ -221,21 +210,6 @@ class BERTSimilarityNN(SimilarityBase):
         self.index.nprobe = 16
 
         check_compatibility(self.df, embeddings, self.model)
-
-    def save_embeddings(self, output_file: str) -> None:
-        """
-        Save embeddings to npy file. Since we do not keep the original embeddings
-        to save memory, we must recompute them on the fly to save them.
-
-        Parameters
-        ==========
-        output_file: str
-            File to save to
-        """
-        embeddings = self.model.encode(
-            list(self.df.top_aggregate_caption), show_progress_bar=True
-        )
-        np.save(output_file, embeddings)
 
     async def search(self, query: str, top_k: int = 10) -> Dict[str, float]:
         """
