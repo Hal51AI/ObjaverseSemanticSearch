@@ -1,7 +1,7 @@
 import os
-import pathlib
 from contextlib import asynccontextmanager
 
+import aiofiles
 from fastapi import FastAPI, Response
 
 from .config import settings
@@ -63,6 +63,9 @@ async def similarity(query: str, top_k: int = 10):
 )
 async def glb(query: str):
     result = await app.state.model.download(query)
-    filepath = pathlib.Path(list(result.values())[0])
-    file_bytes = filepath.read_bytes()
+    filepath = list(result.values())[0]
+
+    async with aiofiles.open(filepath, mode="rb") as fp:
+        file_bytes = await fp.read()
+
     return Response(file_bytes, media_type="model/gltf-binary")

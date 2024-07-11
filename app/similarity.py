@@ -81,6 +81,22 @@ class BERTSimilarity(SimilarityBase):
         np.save(output_file, self.embeddings)
 
     async def search(self, query: str, top_k: int = 10) -> Dict[str, float]:
+        """
+        Async version of search function. Runs the similarity search under
+        a threadpool
+
+        Parameters
+        ==========
+        query: str
+            The query string to search for similar captions.
+        top_k: int
+            The amount of results to show
+
+        Returns
+        =======
+        Dict[str, float]
+            The top captions and their similarity scores
+        """
         return await run_in_threadpool(self.search_sync, query, top_k)
 
     def search_sync(self, query: str, top_k: int = 10) -> Dict[str, float]:
@@ -217,6 +233,22 @@ class BERTSimilarityNN(SimilarityBase):
         np.save(output_file, embeddings)
 
     async def search(self, query: str, top_k: int = 10) -> Dict[str, float]:
+        """
+        Async version of search function. Runs the similarity search under
+        a threadpool
+
+        Parameters
+        ==========
+        query: str
+            The query string to search for similar captions.
+        top_k: int
+            The amount of results to show
+
+        Returns
+        =======
+        Dict[str, float]
+            The top captions and their similarity scores
+        """
         return await run_in_threadpool(self.search_sync, query, top_k)
 
     def search_sync(self, query: str, top_k: int = 10) -> Dict[str, float]:
@@ -265,7 +297,7 @@ class BERTSimilarityNN(SimilarityBase):
         Dict[str, str]
             A random file from the top matching query result
         """
-        results = await self.search(query, top_k=10)
+        results = await self.search(query, top_k=100)
         match_df = await query_db_match(self.db_path, list(results))
         weights = softmax(
             match_df.top_aggregate_caption.map(results) * match_df.probability
