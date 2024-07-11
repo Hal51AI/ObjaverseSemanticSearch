@@ -1,8 +1,12 @@
+import base64
 import os
 from contextlib import asynccontextmanager
+from typing import List
 
 import aiofiles
-from fastapi import FastAPI, Response
+import objaverse
+from fastapi import FastAPI, HTTPException, Query, Response
+from starlette.concurrency import run_in_threadpool
 
 from .config import settings
 from .db import query_db_match
@@ -38,6 +42,36 @@ app = FastAPI(
     summary="Perform semantic search over objaverse and download 3d models",
     lifespan=lifespan,
 )
+
+
+@app.get("/download")
+async def download(
+    objaverse_ids: List[str] = Query(..., description="List of objaverse ids"),
+):
+    # Perform validation to ensure items exist
+    match_df = await query_db_match(
+        app.state.model.db_path, match_list=objaverse_ids, col_name="object_uid"
+    )
+    object_uid_set = set(match_df["object_uid"])
+    missing_items = [item for item in objaverse_ids if item not in object_uid_set]
+
+    # Raise exception if any items are not present
+    if any(missing_items):
+        raise HTTPException(
+            status_code=404,
+            detail=f"The following objaverse_ids do not exist: {list(missing_items)}",
+        )
+
+    file_map = await run_in_threadpool(objaverse.load_objects, objaverse_ids)
+
+    # base64 encode files
+    encoded_files = {}
+    for uid, filepath in file_map.items():
+        async with aiofiles.open(filepath, mode="rb") as fp:
+            file_bytes = await fp.read()
+            encoded_files[uid] = base64.b64encode(file_bytes)
+
+    return encoded_files
 
 
 @app.get("/similarity")
