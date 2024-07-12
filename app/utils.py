@@ -48,7 +48,7 @@ def create_similarity_model(
     """
     Create or load a SimilarityBase model based on the provided embeddings and captions.
 
-    This function either creates a new BERTSimilarity model and saves its embeddings,
+    This function either creates a new SimilarityBase object and saves its embeddings,
     or loads an existing model from saved embeddings. It ensures that the necessary
     files exist before processing.
 
@@ -101,11 +101,11 @@ def check_compatibility(
 
     Parameters
     ----------
-    dataset : Sized
+    dataset: Sized
         The dataset to be checked.
-    embedding : np.ndarray
+    embedding: np.ndarray
         The numpy array containing the embeddings.
-    model : SentenceTransformer
+    model: SentenceTransformer
         The sentence transformer model used to generate embeddings.
 
     Raises

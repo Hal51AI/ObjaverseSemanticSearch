@@ -11,17 +11,11 @@ from .db import create_db
 from .utils import check_compatibility
 
 
-class BERTSimilarity(SimilarityBase):
+class BruteForceSimilarity(SimilarityBase):
     """
-    This class is designed to find the most similar captions to a
-    given query using a pre-trained BERT model. This class takes
-    a file containing captions, computes embeddings for these captions,
-    and allows for searching similar captions based on a query.
-
-    The `captions_file` is a semicolon delimited file containing these fields.
-        - object_uid: uid which cooresponds to an objaverse glb file
-        - top_aggregate_caption: a caption description of the glb file
-        - probability: the probability of the last hidden layer
+    This class uses a brute force method and compares similarity between
+    the query and evey element of the embedding to determine the nearest
+    neighbors.
 
     Parameters
     ==========
@@ -29,7 +23,6 @@ class BERTSimilarity(SimilarityBase):
         The file path to the semicolon delimited file containing captions
     embeddings: np.ndarray, optional
         Precomputed embeddings for the captions.
-        If not provided, embeddings will be computed using the BERT model.
     sentence_transformer_model: str
         The name of the model to use from sentence transformers
 
@@ -44,7 +37,7 @@ class BERTSimilarity(SimilarityBase):
     sentence_transformer_model: str
         The name of the model used from sentence transformers
     model: SentenceTransformer
-        BERT model for generating embeddings.
+        SentenceTransformer model for generating embeddings.
     embeddings: np.ndarray
         Embeddings for the captions.
     """
@@ -114,11 +107,9 @@ class BERTSimilarity(SimilarityBase):
         return {di[i]: float(i) for i in top_arr}
 
 
-class BERTSimilarityNN(SimilarityBase):
+class IVFSimilarity(SimilarityBase):
     """
-    Uses faiss nearest neighbor search to determine similar captions
-    rather than a exhaustive comparison between each element of
-    the embeddings.
+    Uses faiss inverted file index to find similar captions.
 
     Parameters
     ==========
@@ -126,7 +117,6 @@ class BERTSimilarityNN(SimilarityBase):
         The file path to the semicolon delimited file containing captions
     embeddings: np.ndarray, optional
         Precomputed embeddings for the captions.
-        If not provided, embeddings will be computed using the BERT model.
     sentence_transformer_model: str
         The name of the model to use from sentence transformers
 
@@ -141,7 +131,7 @@ class BERTSimilarityNN(SimilarityBase):
     sentence_transformer_model: str
         The name of the model used from sentence transformers
     model: SentenceTransformer
-        BERT model for generating embeddings.
+        SentenceTranformer model for generating embeddings.
     quantizer: faiss.IndexFlatIP
         Faiss quantizer using inner product
     index: faiss.IndexIVFFlat

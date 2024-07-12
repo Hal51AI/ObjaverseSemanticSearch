@@ -64,6 +64,7 @@ async def download(
             detail=f"The following objaverse_ids do not exist: {list(missing_items)}",
         )
 
+    # Download from objaverse
     file_map = await run_in_threadpool(
         objaverse.load_objects, objaverse_ids, download_processes=len(objaverse_ids)
     )
@@ -103,8 +104,6 @@ async def similarity(query: str, top_k: int = 10):
 )
 async def glb(query: str):
     results = await app.state.model.search(query, top_k=100)
-
-    # Match rows from database for results
     match_df = await query_db_match(app.state.model.db_path, list(results))
 
     # Grab a random item from the objects weighted by the softmax probability
