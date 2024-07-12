@@ -38,9 +38,28 @@ async def lifespan(app: FastAPI):
         os.unlink(app.state.model.db_path)
 
 
+description = """
+## Description
+
+The Objaverse Semantic Search API is a tool designed to enhance the discovery and utilization of assets within Objaverse.
+This API uses a vector database and similarity search algorithms to find relevant 3D assets
+
+## Endpoints
+
+| Path          | Description                                                                   |
+|---------------|-------------------------------------------------------------------------------|
+| `/download`   | Directly download one or many items from objaverse if you know the object uid |
+| `/similarity` | Perform similarity search over a query and grab relevant metadata             |
+| `/glb`        | Download a single glb from your query                                         |
+
+"""
+
 app = FastAPI(
-    title="ObjaverseSemanticSearch",
+    title="Objaverse Semantic Search API",
     summary="Perform semantic search over objaverse and download 3d models",
+    description=description,
+    contact={"name": "Hal51 AI", "url": "https://github.com/hal51ai"},
+    license_info={"name": "MIT LIcense", "identifier": "MIT"},
     lifespan=lifespan,
 )
 
