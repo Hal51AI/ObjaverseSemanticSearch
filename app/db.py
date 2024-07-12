@@ -77,4 +77,4 @@ async def query_db_match(
             rows = await cur.fetchall()
             columns = [i[0] for i in cur.description]
 
-    return pd.DataFrame(rows, columns=columns)
+    return pd.DataFrame(list(rows), columns=columns)

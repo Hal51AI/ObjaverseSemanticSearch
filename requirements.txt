@@ -1,8 +1,10 @@
+aiofiles
+aiosqlite
 faiss-cpu
 fastapi
 gunicorn
 objaverse
+pandas-stubs
 pydantic_settings
 sentence-transformers
-aiofiles
-aiosqlite
+types-aiofiles

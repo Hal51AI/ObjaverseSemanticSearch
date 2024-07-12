@@ -1,4 +1,4 @@
-from typing import Dict, Optional
+from typing import Dict, Optional, cast
 
 import faiss
 import numpy as np
@@ -56,8 +56,11 @@ class BruteForceSimilarity(SimilarityBase):
         if isinstance(embeddings, np.ndarray):
             self.embeddings = embeddings
         else:
-            self.embeddings = self.model.encode(
-                list(self.df.top_aggregate_caption), show_progress_bar=True
+            self.embeddings = cast(
+                np.ndarray,
+                self.model.encode(
+                    list(self.df.top_aggregate_caption), show_progress_bar=True
+                ),
             )
 
         check_compatibility(self.df, self.embeddings, self.model)
@@ -98,7 +101,7 @@ class BruteForceSimilarity(SimilarityBase):
         Dict[str, float]
             The top captions and their similarity scores
         """
-        qx = self.model.encode([query])
+        qx = np.array(self.model.encode([query]))
         sim_arr = np.array(self.model.similarity(qx, self.embeddings))[0]
 
         di = dict(zip(sim_arr, self.df.top_aggregate_caption))
@@ -151,9 +154,11 @@ class IVFSimilarity(SimilarityBase):
         self.model = SentenceTransformer(sentence_transformer_model)
 
         if not isinstance(embeddings, np.ndarray):
-            embeddings = self.model.encode(
-                list(self.df.top_aggregate_caption),
-                show_progress_bar=True,
+            embeddings = np.array(
+                self.model.encode(
+                    list(self.df.top_aggregate_caption),
+                    show_progress_bar=True,
+                )
             )
 
         self.quantizer = faiss.IndexScalarQuantizer(

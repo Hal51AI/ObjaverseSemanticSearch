@@ -12,7 +12,7 @@ from starlette.concurrency import run_in_threadpool
 
 from .config import settings
 from .db import query_db_match
-from .similarity import BERTSimilarityNN
+from .similarity import IVFSimilarity
 from .utils import create_similarity_model
 
 
@@ -32,7 +32,7 @@ async def lifespan(app: FastAPI):
         settings.CAPTIONS_FILE,
         settings.EMBEDDINGS_FILE,
         settings.SENTENCE_TRANSFORMER_MODEL,
-        BERTSimilarityNN,
+        IVFSimilarity,
     )
     yield
     if os.path.exists(app.state.model.db_path):
@@ -84,6 +84,7 @@ async def similarity(query: str, top_k: int = 10):
     results = await app.state.model.search(query, top_k=top_k)
     match_df = await query_db_match(app.state.model.db_path, list(results))
 
+    # Pack records into a datastructure to return to user
     records = []
     for match, group_df in sorted(
         match_df.groupby("top_aggregate_caption"),
