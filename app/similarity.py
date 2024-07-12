@@ -1,16 +1,13 @@
-import random
 from typing import Dict, Optional
 
 import faiss
 import numpy as np
-import objaverse
 import pandas as pd
-from scipy.special import softmax
 from sentence_transformers import SentenceTransformer
 from starlette.concurrency import run_in_threadpool
 
 from .abc import SimilarityBase
-from .db import create_db, query_db_match
+from .db import create_db
 from .utils import check_compatibility
 
 
@@ -115,33 +112,6 @@ class BERTSimilarity(SimilarityBase):
         top_arr = np.sort(np.unique(sim_arr))[::-1][:top_k]
 
         return {di[i]: float(i) for i in top_arr}
-
-    async def download(self, query: str) -> Dict[str, str]:
-        """
-        This method downloads a random selection from the most similar captions found
-        through the similarity search. It then returns a dictionary containing
-        the file location of the downloaded file.
-
-        Parameters
-        ==========
-        query: str
-            The query string to search and download
-
-        Returns
-        =======
-        Dict[str, str]
-            A random file from the top matching query result
-        """
-        results = await self.search(query, top_k=10)
-        match_df = await query_db_match(self.db_path, list(results))
-        weights = softmax(
-            match_df.top_aggregate_caption.map(results) * match_df.probability
-        )
-
-        # grab a random item from the objects weighted by the softmax probability
-        selection = random.choices(match_df.object_uid.tolist(), weights=weights)
-
-        return await run_in_threadpool(objaverse.load_objects, selection)
 
 
 class BERTSimilarityNN(SimilarityBase):
@@ -259,30 +229,3 @@ class BERTSimilarityNN(SimilarityBase):
 
         results = dict(zip(found_captions, [float(i) for i in dist[0]]))
         return dict(sorted(results.items(), key=lambda x: x[1], reverse=True)[:top_k])
-
-    async def download(self, query: str) -> Dict[str, str]:
-        """
-        This method downloads a random selection from the most similar captions found
-        through the similarity search. It then returns a dictionary containing
-        the file location of the downloaded file.
-
-        Parameters
-        ==========
-        query: str
-            The query string to search and download
-
-        Returns
-        =======
-        Dict[str, str]
-            A random file from the top matching query result
-        """
-        results = await self.search(query, top_k=100)
-        match_df = await query_db_match(self.db_path, list(results))
-        weights = softmax(
-            match_df.top_aggregate_caption.map(results) * match_df.probability
-        )
-
-        # grab a random item from the objects weighted by the softmax probability
-        selection = random.choices(match_df.object_uid.tolist(), weights=weights)
-
-        return await run_in_threadpool(objaverse.load_objects, selection)

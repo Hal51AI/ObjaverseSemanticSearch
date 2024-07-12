@@ -52,21 +52,3 @@ class SimilarityBase(ABC):
         Dict[str, float]
             The top captions and their similarity scores
         """
-
-    @abstractmethod
-    async def download(self, query: str) -> Dict[str, str]:
-        """
-        Method for downloading the most similar glb file from the similarity score.
-        Returns a dictionary where the keys are the glb file id's and the values
-        are a path to a local file containing the downloaded glb file.
-
-        Parameters
-        ==========
-        query: str
-            The query string to search and download
-
-        Returns
-        =======
-        Dict[str, str]
-            A random file from the top matching query result
-        """

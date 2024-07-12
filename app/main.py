@@ -1,11 +1,13 @@
 import base64
 import os
+import random
 from contextlib import asynccontextmanager
 from typing import List
 
 import aiofiles
 import objaverse
 from fastapi import FastAPI, HTTPException, Query, Response
+from scipy.special import softmax
 from starlette.concurrency import run_in_threadpool
 
 from .config import settings
@@ -62,7 +64,9 @@ async def download(
             detail=f"The following objaverse_ids do not exist: {list(missing_items)}",
         )
 
-    file_map = await run_in_threadpool(objaverse.load_objects, objaverse_ids)
+    file_map = await run_in_threadpool(
+        objaverse.load_objects, objaverse_ids, download_processes=len(objaverse_ids)
+    )
 
     # base64 encode files
     encoded_files = {}
@@ -98,9 +102,22 @@ async def similarity(query: str, top_k: int = 10):
     responses={200: {"content": {"model/gltf-binary": {}}}},
 )
 async def glb(query: str):
-    result = await app.state.model.download(query)
-    filepath = list(result.values())[0]
+    results = await app.state.model.search(query, top_k=100)
 
+    # Match rows from database for results
+    match_df = await query_db_match(app.state.model.db_path, list(results))
+
+    # Grab a random item from the objects weighted by the softmax probability
+    weights = softmax(
+        match_df.top_aggregate_caption.map(results) * match_df.probability
+    )
+    selection = random.choices(match_df.object_uid.tolist(), weights=weights)
+
+    # Download from objaverse
+    glb_map = await run_in_threadpool(objaverse.load_objects, selection)
+
+    # read file from filesystem
+    filepath = list(glb_map.values())[0]
     async with aiofiles.open(filepath, mode="rb") as fp:
         file_bytes = await fp.read()
 
