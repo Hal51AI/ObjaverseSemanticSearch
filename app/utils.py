@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import TYPE_CHECKING, Sized, Type
+from typing import TYPE_CHECKING, Sized
 
 import numpy as np
 import pandas as pd
@@ -10,7 +10,6 @@ from sentence_transformers import SentenceTransformer
 
 if TYPE_CHECKING:
     from .abc import SimilarityBase
-
 logger = logging.getLogger("uvicorn")
 
 
@@ -43,7 +42,7 @@ def create_similarity_model(
     captions_file: str,
     embeddings_file: str,
     sentence_transformer_model: str,
-    similarity_model_cls: Type[SimilarityBase],
+    similarity_search: str,
 ) -> SimilarityBase:
     """
     Create or load a SimilarityBase model based on the provided embeddings and captions.
@@ -62,8 +61,8 @@ def create_similarity_model(
         A string for the sentence transformer model to load.
         Find all the different models that you can use here.
             https://sbert.net/docs/sentence_transformer/pretrained_models.html#original-models
-    similarity_model_cls: Type[SimilarityBase]
-        A concrete implementation of the SimilarityBase class to instantiate
+    similarity_search: str
+        The name of a concrete implementation of the SimilarityBase class to instantiate
 
     Returns
     =======
@@ -75,12 +74,15 @@ def create_similarity_model(
     FileNotFoundError
         If the specified captions file does not exist.
     """
+    from app import similarity
+
     if not os.path.isfile(captions_file):
         raise FileNotFoundError(f"Could not find captions file at {captions_file}")
 
     if not os.path.isfile(embeddings_file):
         create_embeddings(captions_file, embeddings_file, sentence_transformer_model)
 
+    similarity_model_cls = getattr(similarity, similarity_search)
     sim_model = similarity_model_cls.from_embeddings(
         captions_file, embeddings_file, sentence_transformer_model
     )
