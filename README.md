@@ -1,5 +1,7 @@
 # Objaverse Semantic Search
 
+[![mypy](https://github.com/Hal51AI/ObjaverseSemanticSearch/actions/workflows/mypy.yml/badge.svg)](https://github.com/Hal51AI/ObjaverseSemanticSearch/actions/workflows/mypy.yml)
+
 ## Install Dependencies
 
 You can install dependencies using pip
