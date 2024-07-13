@@ -2,7 +2,7 @@ import base64
 import os
 import random
 from contextlib import asynccontextmanager
-from typing import List
+from typing import Annotated, List
 
 import aiofiles
 import objaverse
@@ -12,6 +12,7 @@ from starlette.concurrency import run_in_threadpool
 
 from .config import settings
 from .db import query_db_match
+from .models import ObjaverseDownloadItem
 from .utils import create_similarity_model
 
 
@@ -64,10 +65,53 @@ app = FastAPI(
 )
 
 
-@app.get("/download")
+@app.get(
+    "/download",
+    response_model=List[ObjaverseDownloadItem],
+    response_description="A list of base64 encoded glb files",
+    responses={
+        200: {
+            "description": "GLB files requested by UID's",
+            "content": {
+                "application/json": {
+                    "example": [
+                        {
+                            "uid": "81b98c35166d4f75b559438a93843a71",
+                            "data": "Z2xURgIAAAAgrA0AyBAAAEpTT057ImFjY2Vzc29ycyI6W3siYnVmZmVyVmlldyI6MiwiY29tcG9...",
+                        },
+                        {
+                            "uid": "d16afc21f6d6486da1f7b274ddf52129",
+                            "data": "Z2xURgIAAAA4RQIAzAkAAEpTT057ImFjY2Vzc29ycyI6W3siYnVmZmVyVmlldyI6MSwiY29tcG9...",
+                        },
+                    ]
+                }
+            },
+        },
+        404: {
+            "description": "One of the UID's provided did not exist in the objaverse repository",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "The following objaverse_ids do not exist: ['nonce']"
+                    }
+                }
+            },
+        },
+    },
+    tags=["objaverse"],
+)
 async def download(
-    objaverse_ids: List[str] = Query(..., description="List of objaverse ids"),
+    objaverse_ids: Annotated[
+        List[str],
+        Query(
+            ...,
+            description="List of objaverse ids. You can use `/similarity` to find ids based on a query",
+        ),
+    ],
 ):
+    """
+    Directly download one or many items from objaverse if you know the object uid
+    """
     # Perform validation to ensure items exist
     match_df = await query_db_match(
         app.state.model.db_path, match_list=objaverse_ids, col_name="object_uid"
@@ -88,17 +132,27 @@ async def download(
     )
 
     # base64 encode files
-    encoded_files = {}
+    encoded_files = []
     for uid, filepath in file_map.items():
         async with aiofiles.open(filepath, mode="rb") as fp:
             file_bytes = await fp.read()
-            encoded_files[uid] = base64.b64encode(file_bytes)
+            encoded_files.append({"uid": uid, "data": base64.b64encode(file_bytes)})
 
     return encoded_files
 
 
-@app.get("/similarity")
-async def similarity(query: str, top_k: int = 10):
+@app.get("/similarity", tags=["query"])
+async def similarity(
+    query: Annotated[
+        str, Query(description="Perform similarity search on the query string")
+    ],
+    top_k: Annotated[
+        int, Query(description="Grab top k results based on similarity")
+    ] = 10,
+):
+    """
+    Perform similarity search over a query and grab relevant metadata
+    """
     results = await app.state.model.search(query, top_k=top_k)
     match_df = await query_db_match(app.state.model.db_path, list(results))
 
@@ -120,8 +174,16 @@ async def similarity(query: str, top_k: int = 10):
     "/glb",
     response_class=Response,
     responses={200: {"content": {"model/gltf-binary": {}}}},
+    tags=["query"],
 )
-async def glb(query: str):
+async def glb(
+    query: Annotated[
+        str, Query(description="Perform similarity search on the query string")
+    ],
+):
+    """
+    Perform similarity search over a query and grab relevant metadata
+    """
     results = await app.state.model.search(query, top_k=100)
     match_df = await query_db_match(app.state.model.db_path, list(results))
 
