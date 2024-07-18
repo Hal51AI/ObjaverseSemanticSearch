@@ -12,7 +12,7 @@ from starlette.concurrency import run_in_threadpool
 
 from .config import settings
 from .db import query_db_match
-from .models import ObjaverseDownloadItem
+from .models import ObjaverseDownloadItem, ObjaverseSimilarityResult
 from .utils import create_similarity_model
 
 
@@ -141,7 +141,38 @@ async def download(
     return encoded_files
 
 
-@app.get("/similarity", tags=["query"])
+@app.get(
+    "/similarity",
+    tags=["query"],
+    response_model=List[ObjaverseSimilarityResult],
+    responses={
+        200: {
+            "description": "A similarity query",
+            "content": {
+                "application/json": {
+                    "example": [
+                        {
+                            "match": "a polar bear",
+                            "similarity": 0.7350118160247803,
+                            "items": [
+                                {
+                                    "object_uid": "b41b41a2858046fea0021f677dc010c4",
+                                    "top_aggregate_caption": "a polar bear",
+                                    "probability": 0.4412872404285839,
+                                },
+                                {
+                                    "object_uid": "cdd861d7849440abb95fa8e37376d099",
+                                    "top_aggregate_caption": "a polar bear",
+                                    "probability": 0.2862682242309294,
+                                },
+                            ],
+                        },
+                    ]
+                }
+            },
+        }
+    },
+)
 async def similarity(
     query: Annotated[
         str, Query(description="Perform similarity search on the query string")
@@ -173,7 +204,7 @@ async def similarity(
 @app.get(
     "/glb",
     response_class=Response,
-    responses={200: {"content": {"model/gltf-binary": {}}}},
+    responses={200: {"content": {"model/gltf-binary": {"example": "binary blob..."}}}},
     tags=["query"],
 )
 async def glb(
