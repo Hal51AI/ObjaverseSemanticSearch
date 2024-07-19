@@ -6,7 +6,8 @@ from typing import Annotated, List
 
 import aiofiles
 import objaverse
-from fastapi import FastAPI, HTTPException, Query, Response
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.responses import FileResponse
 from scipy.special import softmax
 from starlette.concurrency import run_in_threadpool
 
@@ -203,7 +204,7 @@ async def similarity(
 
 @app.get(
     "/glb",
-    response_class=Response,
+    response_class=FileResponse,
     responses={200: {"content": {"model/gltf-binary": {"example": "binary blob..."}}}},
     tags=["query"],
 )
@@ -229,7 +230,9 @@ async def glb(
 
     # read file from filesystem
     filepath = list(glb_map.values())[0]
-    async with aiofiles.open(filepath, mode="rb") as fp:
-        file_bytes = await fp.read()
 
-    return Response(file_bytes, media_type="model/gltf-binary")
+    return FileResponse(
+        path=filepath,
+        media_type="model/gltf-binary",
+        filename=os.path.basename(filepath),
+    )
