@@ -11,11 +11,32 @@ from starlette.concurrency import run_in_threadpool
 
 
 async def create_db(captions_file: str, database_path: str) -> str:
+    """
+    Create database from the `caption_file` and annotations from
+    objaverse. Creates indexes in locations where searches are going to be
+    as well as creates a view combining the `captions_file` and annotations.
+
+    Parameters
+    ==========
+    captions_file: str
+        File containing caption data and probability of classification
+    database_path: str
+        Location where database file is located. If database already exists
+        checks and validates the contents.
+
+    Returns
+    =======
+    str
+        Path to the newly created database
+    """
     # Read from captions file asynchronously
     async with aiofiles.open(captions_file) as fp:
         objaverse_items = [i async for i in aiocsv.AsyncDictReader(fp, delimiter=";")]
 
     async with aiosqlite.connect(database_path) as conn:
+        await conn.execute("""
+            PRAGMA synchronous = NORMAL;
+        """)
         # Create objaverse table
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS objaverse (
@@ -124,7 +145,7 @@ async def create_db(captions_file: str, database_path: str) -> str:
                 INSERT OR IGNORE INTO
                     objaverse
                 VALUES
-                    ({','.join(repeat("?", len(objaverse_table_info)))})
+                    ({','.join(repeat("?", len(list(objaverse_table_info))))})
             """,
                 objaverse_insert_items,
             )
@@ -146,7 +167,7 @@ async def create_db(captions_file: str, database_path: str) -> str:
                 INSERT OR IGNORE INTO
                     metadata
                 VALUES
-                    ({",".join(repeat("?", len(metadata_table_info)))})
+                    ({",".join(repeat("?", len(list(metadata_table_info))))})
             """,
                 annotation_items,
             )

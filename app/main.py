@@ -244,7 +244,7 @@ async def similarity(
         similarity = results[match]
         group_dict = group_df.to_dict(orient="records")
         items = [
-            ObjaverseItemResult(metadata=dict(ObjaverseMetadataResult(**i)), **i)
+            ObjaverseItemResult(metadata=dict(ObjaverseMetadataResult(**i)), **i)  # type: ignore
             for i in group_dict
         ]
 
