@@ -1,6 +1,7 @@
 aiocsv
 aiofiles
 aiosqlite
+ciso8601
 faiss-cpu
 fastapi
 gunicorn
