@@ -5,8 +5,6 @@ import numpy as np
 import pandas as pd
 from sentence_transformers import SentenceTransformer
 
-from .db import create_db
-
 
 class SimilarityBase(ABC):
     """
@@ -17,12 +15,13 @@ class SimilarityBase(ABC):
     def __init__(
         self,
         captions_file: str,
+        database_path: str,
         embeddings: Optional[np.ndarray] = None,
         sentence_transformer_model: str = "all-MiniLM-L6-v2",
     ) -> None:
         self.captions_file = captions_file
+        self.database_path = database_path
         self.df = pd.read_csv(captions_file, delimiter=";")
-        self.db_path = create_db(self.df)
         self.sentence_transformer_model = sentence_transformer_model
         self.model = SentenceTransformer(sentence_transformer_model)
 
@@ -30,6 +29,7 @@ class SimilarityBase(ABC):
     def from_embeddings(
         cls,
         captions_file: str,
+        database_path: str,
         embeddings_file: str,
         sentence_transformer_model: str = "all-MiniLM-L6-v2",
     ) -> "SimilarityBase":
@@ -46,6 +46,7 @@ class SimilarityBase(ABC):
         embeddings = np.load(embeddings_file).astype(np.float32)
         return cls(
             captions_file,
+            database_path=database_path,
             embeddings=embeddings,
             sentence_transformer_model=sentence_transformer_model,
         )

@@ -1,1 +1,3 @@
 *.npy
+*.sqlite3
+*.db

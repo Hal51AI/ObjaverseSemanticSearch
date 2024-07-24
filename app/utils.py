@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Sized
 import numpy as np
 import pandas as pd
 from sentence_transformers import SentenceTransformer
+from starlette.concurrency import run_in_threadpool
 
 if TYPE_CHECKING:
     from .abc import SimilarityBase
@@ -38,8 +39,9 @@ def create_embeddings(
     np.save(embeddings_file, embeddings)
 
 
-def create_similarity_model(
+async def create_similarity_model(
     captions_file: str,
+    database_path: str,
     embeddings_file: str,
     sentence_transformer_model: str,
     similarity_search: str,
@@ -80,11 +82,21 @@ def create_similarity_model(
         raise FileNotFoundError(f"Could not find captions file at {captions_file}")
 
     if not os.path.isfile(embeddings_file):
-        create_embeddings(captions_file, embeddings_file, sentence_transformer_model)
+        await run_in_threadpool(
+            create_embeddings,
+            captions_file=captions_file,
+            embeddings_file=embeddings_file,
+            sentence_transformer_model=sentence_transformer_model,
+        )
 
     similarity_model_cls = getattr(similarity, similarity_search)
-    sim_model = similarity_model_cls.from_embeddings(
-        captions_file, embeddings_file, sentence_transformer_model
+
+    sim_model = await run_in_threadpool(
+        similarity_model_cls.from_embeddings,
+        captions_file=captions_file,
+        database_path=database_path,
+        embeddings_file=embeddings_file,
+        sentence_transformer_model=sentence_transformer_model,
     )
 
     return sim_model

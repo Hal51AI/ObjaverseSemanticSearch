@@ -7,7 +7,6 @@ from sentence_transformers import SentenceTransformer
 from starlette.concurrency import run_in_threadpool
 
 from .abc import SimilarityBase
-from .db import create_db
 from .utils import check_compatibility
 
 
@@ -21,6 +20,8 @@ class BruteForceSimilarity(SimilarityBase):
     ==========
     captions_file: str
         The file path to the semicolon delimited file containing captions
+    database_path: str
+        Location of the populated database file
     embeddings: np.ndarray, optional
         Precomputed embeddings for the captions.
     sentence_transformer_model: str
@@ -30,10 +31,10 @@ class BruteForceSimilarity(SimilarityBase):
     ==========
     captions_file: str
         The file path to the captions CSV file
+    database_path: str
+        Location of the populated database file
     df: pandas.DataFrame
         DataFrame containing the data from the CSV file.
-    db_path: str
-        A path to the sqlite3 database file created from dataframe
     sentence_transformer_model: str
         The name of the model used from sentence transformers
     model: SentenceTransformer
@@ -45,20 +46,23 @@ class BruteForceSimilarity(SimilarityBase):
     def __init__(
         self,
         captions_file: str,
+        database_path: str,
         embeddings: Optional[np.ndarray] = None,
         sentence_transformer_model: str = "all-MiniLM-L6-v2",
     ) -> None:
         self.captions_file = captions_file
+        self.database_path = database_path
         self.df = pd.read_csv(captions_file, delimiter=";")
-        self.db_path = create_db(self.df)
         self.sentence_transformer_model = sentence_transformer_model
         self.model = SentenceTransformer(sentence_transformer_model)
         if isinstance(embeddings, np.ndarray):
             self.embeddings = embeddings
         else:
-            self.embeddings = np.array(self.model.encode(
-                list(self.df.top_aggregate_caption), show_progress_bar=True
-            ))
+            self.embeddings = np.array(
+                self.model.encode(
+                    list(self.df.top_aggregate_caption), show_progress_bar=True
+                )
+            )
 
         check_compatibility(self.df, self.embeddings, self.model)
 
@@ -115,6 +119,8 @@ class IVFSimilarity(SimilarityBase):
     ==========
     captions_file: str
         The file path to the semicolon delimited file containing captions
+    database_path: str
+        Location of the populated database file
     embeddings: np.ndarray, optional
         Precomputed embeddings for the captions.
     sentence_transformer_model: str
@@ -124,10 +130,10 @@ class IVFSimilarity(SimilarityBase):
     ==========
     captions_file: str
         The file path to the captions CSV file
+    database_path: str
+        Location of the populated database file
     df: pandas.DataFrame
         DataFrame containing the data from the CSV file.
-    db_path: str
-        A path to the sqlite3 database file created from dataframe
     sentence_transformer_model: str
         The name of the model used from sentence transformers
     model: SentenceTransformer
@@ -141,12 +147,13 @@ class IVFSimilarity(SimilarityBase):
     def __init__(
         self,
         captions_file: str,
+        database_path: str,
         embeddings: Optional[np.ndarray] = None,
         sentence_transformer_model: str = "all-MiniLM-L6-v2",
     ) -> None:
         self.captions_file = captions_file
+        self.database_path = database_path
         self.df = pd.read_csv(captions_file, delimiter=";")
-        self.db_path = create_db(self.df)
         self.sentence_transformer_model = sentence_transformer_model
         self.model = SentenceTransformer(sentence_transformer_model)
 

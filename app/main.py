@@ -1,7 +1,9 @@
+import asyncio
 import base64
 import os
 import random
 from contextlib import asynccontextmanager
+from textwrap import dedent
 from typing import Annotated, List
 
 import aiofiles
@@ -12,54 +14,58 @@ from scipy.special import softmax
 from starlette.concurrency import run_in_threadpool
 
 from .config import settings
-from .db import query_db_match
-from .models import ObjaverseDownloadItem, ObjaverseSimilarityResult
+from .db import create_db, query_db_match
+from .models import (
+    ObjaverseDownloadItem,
+    ObjaverseItemResult,
+    ObjaverseMetadataResult,
+    ObjaverseSimilarityResult,
+)
 from .utils import create_similarity_model
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
-    Create a model and bind it to the fastapi object.
-    When app is shutdown, also deletes the created database object
-    as a cleanup action.
+    Create a model and bind it to the fastapi object while concurrently
+    creating the database object.
 
     Parameters
     ==========
     app: FastAPI
         Application object from fastapi
     """
-    app.state.model = create_similarity_model(
-        settings.CAPTIONS_FILE,
-        settings.EMBEDDINGS_FILE,
-        settings.SENTENCE_TRANSFORMER_MODEL,
-        settings.SIMILARITY_SEARCH,
+
+    app.state.model, _ = await asyncio.gather(
+        create_similarity_model(
+            settings.CAPTIONS_FILE,
+            settings.DATABASE_PATH,
+            settings.EMBEDDINGS_FILE,
+            settings.SENTENCE_TRANSFORMER_MODEL,
+            settings.SIMILARITY_SEARCH,
+        ),
+        create_db(settings.CAPTIONS_FILE, settings.DATABASE_PATH),
     )
     yield
-    if os.path.exists(app.state.model.db_path):
-        os.unlink(app.state.model.db_path)
 
-
-description = """
-## Description
-
-The Objaverse Semantic Search API is a tool designed to enhance the discovery and utilization of assets within Objaverse.
-This API uses a vector database and similarity search algorithms to find relevant 3D assets
-
-## Endpoints
-
-| Path          | Description                                                                   |
-|---------------|-------------------------------------------------------------------------------|
-| `/download`   | Directly download one or many items from objaverse if you know the object uid |
-| `/similarity` | Perform similarity search over a query and grab relevant metadata             |
-| `/glb`        | Download a single glb from your query                                         |
-
-"""
 
 app = FastAPI(
     title="Objaverse Semantic Search API",
     summary="Perform semantic search over objaverse and download 3d models",
-    description=description,
+    description=dedent("""
+        ## Description
+
+        The Objaverse Semantic Search API is a tool designed to enhance the discovery and utilization of assets within Objaverse.
+        This API uses a vector database and similarity search algorithms to find relevant 3D assets
+
+        ## Endpoints
+
+        | Path          | Description                                                                   |
+        |---------------|-------------------------------------------------------------------------------|
+        | `/download`   | Directly download one or many items from objaverse if you know the object uid |
+        | `/similarity` | Perform similarity search over a query and grab relevant metadata             |
+        | `/glb`        | Download a single glb from your query                                         |
+    """),
     contact={"name": "Hal51 AI", "url": "https://github.com/hal51ai"},
     license_info={"name": "MIT LIcense", "identifier": "MIT"},
     lifespan=lifespan,
@@ -115,7 +121,7 @@ async def download(
     """
     # Perform validation to ensure items exist
     match_df = await query_db_match(
-        app.state.model.db_path, match_list=objaverse_ids, col_name="object_uid"
+        app.state.model.database_path, match_list=objaverse_ids, col_name="object_uid"
     )
     object_uid_set = set(match_df["object_uid"])
     missing_items = [item for item in objaverse_ids if item not in object_uid_set]
@@ -153,19 +159,57 @@ async def download(
                 "application/json": {
                     "example": [
                         {
-                            "match": "a polar bear",
-                            "similarity": 0.7350118160247803,
+                            "match": "a black bear",
+                            "similarity": 0.8646828532218933,
                             "items": [
                                 {
-                                    "object_uid": "b41b41a2858046fea0021f677dc010c4",
-                                    "top_aggregate_caption": "a polar bear",
-                                    "probability": 0.4412872404285839,
-                                },
+                                    "object_uid": "da9b588f7a7346519f391c3eb9532226",
+                                    "top_aggregate_caption": "a black bear",
+                                    "probability": 0.3426025195650379,
+                                    "metadata": {
+                                        "name": "Bear",
+                                        "staffpickedAt": None,
+                                        "viewCount": 855,
+                                        "likeCount": 14,
+                                        "animationCount": 0,
+                                        "description": "Scientific name: Ursidae\nSpeed: Polar bear: 40 km",
+                                        "faceCount": 12126,
+                                        "vertexCount": 6083,
+                                        "license": "by",
+                                        "publishedAt": "2021-09-28 09:35:12.478873",
+                                        "createdAt": "2021-09-28 09:31:59.137726",
+                                        "isAgeRestricted": False,
+                                        "userId": "9b1a1d4bacff44d28116cfe61bc5d164",
+                                        "userName": "sdpm",
+                                    },
+                                }
+                            ],
+                        },
+                        {
+                            "match": "a cartoon bear",
+                            "similarity": 0.8628631234169006,
+                            "items": [
                                 {
-                                    "object_uid": "cdd861d7849440abb95fa8e37376d099",
-                                    "top_aggregate_caption": "a polar bear",
-                                    "probability": 0.2862682242309294,
-                                },
+                                    "object_uid": "33e532df00c54a13beda1cea02cef604",
+                                    "top_aggregate_caption": "a cartoon bear",
+                                    "probability": 0.159121752762681,
+                                    "metadata": {
+                                        "name": "Another Grizzly Bear Turned Into Stone",
+                                        "staffpickedAt": None,
+                                        "viewCount": 430,
+                                        "likeCount": 6,
+                                        "animationCount": 0,
+                                        "description": "There is another bear turned into stone.",
+                                        "faceCount": 18530,
+                                        "vertexCount": 10890,
+                                        "license": "by",
+                                        "publishedAt": "2018-06-30 12:46:25.321332",
+                                        "createdAt": "2018-06-30 12:44:40.455319",
+                                        "isAgeRestricted": False,
+                                        "userId": "2d2b33f4ca0149cab59981982f39f30b",
+                                        "userName": "marvelvsdcvscapcomvssega",
+                                    },
+                                }
                             ],
                         },
                     ]
@@ -186,7 +230,9 @@ async def similarity(
     Perform similarity search over a query and grab relevant metadata
     """
     results = await app.state.model.search(query, top_k=top_k)
-    match_df = await query_db_match(app.state.model.db_path, list(results))
+    match_df = await query_db_match(
+        app.state.model.database_path, list(results), table_name="combined"
+    )
 
     # Pack records into a datastructure to return to user
     records = []
@@ -196,7 +242,12 @@ async def similarity(
         reverse=True,
     ):
         similarity = results[match]
-        items = group_df.to_dict(orient="records")
+        group_dict = group_df.to_dict(orient="records")
+        items = [
+            ObjaverseItemResult(metadata=dict(ObjaverseMetadataResult(**i)), **i)
+            for i in group_dict
+        ]
+
         records.append({"match": match, "similarity": similarity, "items": items})
 
     return records
@@ -217,7 +268,7 @@ async def glb(
     Perform similarity search over a query and grab relevant metadata
     """
     results = await app.state.model.search(query, top_k=100)
-    match_df = await query_db_match(app.state.model.db_path, list(results))
+    match_df = await query_db_match(app.state.model.database_path, list(results))
 
     # Grab a random item from the objects weighted by the softmax probability
     weights = softmax(
