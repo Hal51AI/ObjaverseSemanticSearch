@@ -32,9 +32,7 @@ def create_embeddings(
     """
     with sqlite3.connect(database_path) as db:
         res = db.execute("""
-            SELECT rowid, CONCAT(
-                top_aggregate_caption, ', ',  name, ', ', description
-            )
+            SELECT rowid, top_aggregate_caption || ', ' || name || ', ' || description
             FROM combined
             ORDER BY rowid
         """).fetchall()
