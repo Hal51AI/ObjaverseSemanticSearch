@@ -1,4 +1,4 @@
-from typing import Any, Dict, Tuple
+from typing import Dict, List, Tuple
 
 import faiss
 import numpy as np
@@ -60,7 +60,7 @@ class BruteForceSimilarity(SimilarityBase):
 
         check_compatibility(self.df, self.embeddings, self.model)
 
-    async def search(self, query: str, top_k: int = 10) -> Dict[str, float]:
+    async def search(self, query: str, top_k: int = 10) -> List[Dict]:
         """
         Async version of search function. Runs the similarity search under
         a threadpool
@@ -178,7 +178,7 @@ class IVFSimilarity(SimilarityBase):
 
         check_compatibility(self.df, embeddings, self.model)
 
-    async def search(self, query: str, top_k: int = 10) -> Dict[str, Any]:
+    async def search(self, query: str, top_k: int = 10) -> List[Dict]:
         """
         Finds the most similar captions to a given query and returns the
 

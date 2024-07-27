@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict
+from typing import Dict, List
 
 import numpy as np
 import pandas as pd
@@ -53,7 +53,7 @@ class SimilarityBase(ABC):
         )
 
     @abstractmethod
-    async def search(self, query: str, top_k: int = 10) -> Dict[str, float]:
+    async def search(self, query: str, top_k: int = 10) -> List[Dict]:
         """
         Method for searching similar captions. It must return a dictionary where the
         keys are the matching queries as a string and the values are similarity

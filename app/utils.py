@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import os
 import sqlite3
-from typing import TYPE_CHECKING, Dict, Sized
+from typing import TYPE_CHECKING, Any, Dict, Sized
 
 import numpy as np
 from sentence_transformers import SentenceTransformer
@@ -11,7 +11,6 @@ from starlette.concurrency import run_in_threadpool
 
 if TYPE_CHECKING:
     from .abc import SimilarityBase
-    from .models import ObjaverseItemResult
 
 logger = logging.getLogger("uvicorn")
 
@@ -166,7 +165,7 @@ def check_compatibility(
         )
 
 
-def reformat_results(data: Dict) -> ObjaverseItemResult:
+def reformat_results(data: Dict) -> Dict[str, Any]:
     """
     Reformat a dictionary by keeping specific keys at the top level
     and moving the remaining keys into a nested 'metadata' dictionary.
