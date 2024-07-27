@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Optional
+from typing import Dict
 
 import numpy as np
 import pandas as pd
@@ -16,11 +16,12 @@ class SimilarityBase(ABC):
         self,
         captions_file: str,
         database_path: str,
-        embeddings: Optional[np.ndarray] = None,
+        embeddings: np.ndarray,
         sentence_transformer_model: str = "all-MiniLM-L6-v2",
     ) -> None:
         self.captions_file = captions_file
         self.database_path = database_path
+        self.embeddings = embeddings
         self.df = pd.read_csv(captions_file, delimiter=";")
         self.sentence_transformer_model = sentence_transformer_model
         self.model = SentenceTransformer(sentence_transformer_model)

@@ -40,15 +40,15 @@ async def create_db(captions_file: str, database_path: str) -> str:
         # Create objaverse table
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS objaverse (
-                object_uid            TEXT PRIMARY KEY,
+                object_uid            TEXT,
                 top_aggregate_caption TEXT,
                 probability           REAL
             );
         """)
-        # Create index on captions for fast retrieval
+        # Create index on for fast retrieval
         await conn.execute("""
             CREATE INDEX IF NOT EXISTS idx_caption ON objaverse (
-                top_aggregate_caption
+                object_uid, top_aggregate_caption
             );
         """)
         # Create metadata table
@@ -73,10 +73,16 @@ async def create_db(captions_file: str, database_path: str) -> str:
                     REFERENCES objaverse(object_uid)
             );
         """)
+        await conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_description ON metadata (
+                description 
+            );
+        """)
         # Create a view to merge these two tables
         await conn.execute("""
             CREATE VIEW IF NOT EXISTS combined AS
             SELECT
+                obj.rowid,
                 obj.object_uid,
                 obj.top_aggregate_caption,
                 obj.probability,

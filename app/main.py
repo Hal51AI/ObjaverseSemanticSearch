@@ -1,4 +1,3 @@
-import asyncio
 import base64
 import os
 import random
@@ -18,10 +17,8 @@ from .db import create_db, query_db_match
 from .models import (
     ObjaverseDownloadItem,
     ObjaverseItemResult,
-    ObjaverseMetadataResult,
-    ObjaverseSimilarityResult,
 )
-from .utils import create_similarity_model
+from .utils import create_similarity_model, reformat_results
 
 
 @asynccontextmanager
@@ -36,15 +33,14 @@ async def lifespan(app: FastAPI):
         Application object from fastapi
     """
 
-    app.state.model, _ = await asyncio.gather(
-        create_similarity_model(
-            settings.CAPTIONS_FILE,
-            settings.DATABASE_PATH,
-            settings.EMBEDDINGS_FILE,
-            settings.SENTENCE_TRANSFORMER_MODEL,
-            settings.SIMILARITY_SEARCH,
-        ),
-        create_db(settings.CAPTIONS_FILE, settings.DATABASE_PATH),
+    await create_db(settings.CAPTIONS_FILE, settings.DATABASE_PATH)
+
+    app.state.model = await create_similarity_model(
+        settings.CAPTIONS_FILE,
+        settings.DATABASE_PATH,
+        settings.EMBEDDINGS_FILE,
+        settings.SENTENCE_TRANSFORMER_MODEL,
+        settings.SIMILARITY_SEARCH,
     )
     yield
 
@@ -151,7 +147,7 @@ async def download(
 @app.get(
     "/similarity",
     tags=["query"],
-    response_model=List[ObjaverseSimilarityResult],
+    response_model=List[ObjaverseItemResult],
     responses={
         200: {
             "description": "A similarity query",
@@ -159,58 +155,48 @@ async def download(
                 "application/json": {
                     "example": [
                         {
-                            "match": "a black bear",
-                            "similarity": 0.8646828532218933,
-                            "items": [
-                                {
-                                    "object_uid": "da9b588f7a7346519f391c3eb9532226",
-                                    "top_aggregate_caption": "a black bear",
-                                    "probability": 0.3426025195650379,
-                                    "metadata": {
-                                        "name": "Bear",
-                                        "staffpickedAt": None,
-                                        "viewCount": 855,
-                                        "likeCount": 14,
-                                        "animationCount": 0,
-                                        "description": "Scientific name: Ursidae\nSpeed: Polar bear: 40 km",
-                                        "faceCount": 12126,
-                                        "vertexCount": 6083,
-                                        "license": "by",
-                                        "publishedAt": "2021-09-28 09:35:12.478873",
-                                        "createdAt": "2021-09-28 09:31:59.137726",
-                                        "isAgeRestricted": False,
-                                        "userId": "9b1a1d4bacff44d28116cfe61bc5d164",
-                                        "userName": "sdpm",
-                                    },
-                                }
-                            ],
+                            "object_uid": "2f0598cba938424688cdd048a90b8339",
+                            "top_aggregate_caption": "a boat",
+                            "probability": 0.439652563952344,
+                            "similarity": 0.7142868041992188,
+                            "metadata": {
+                                "name": "boat",
+                                "staffpickedAt": None,
+                                "viewCount": 1775,
+                                "likeCount": 28,
+                                "animationCount": 0,
+                                "description": "",
+                                "faceCount": 18458,
+                                "vertexCount": 10306,
+                                "license": "by",
+                                "publishedAt": "2021-04-29 23:22:23.021191",
+                                "createdAt": "2021-04-29 22:45:13.799783",
+                                "isAgeRestricted": False,
+                                "userId": "49dd921047ae4da28aeaaa213e9a5d8a",
+                                "userName": "jondameron5",
+                            },
                         },
                         {
-                            "match": "a cartoon bear",
-                            "similarity": 0.8628631234169006,
-                            "items": [
-                                {
-                                    "object_uid": "33e532df00c54a13beda1cea02cef604",
-                                    "top_aggregate_caption": "a cartoon bear",
-                                    "probability": 0.159121752762681,
-                                    "metadata": {
-                                        "name": "Another Grizzly Bear Turned Into Stone",
-                                        "staffpickedAt": None,
-                                        "viewCount": 430,
-                                        "likeCount": 6,
-                                        "animationCount": 0,
-                                        "description": "There is another bear turned into stone.",
-                                        "faceCount": 18530,
-                                        "vertexCount": 10890,
-                                        "license": "by",
-                                        "publishedAt": "2018-06-30 12:46:25.321332",
-                                        "createdAt": "2018-06-30 12:44:40.455319",
-                                        "isAgeRestricted": False,
-                                        "userId": "2d2b33f4ca0149cab59981982f39f30b",
-                                        "userName": "marvelvsdcvscapcomvssega",
-                                    },
-                                }
-                            ],
+                            "object_uid": "56148c53e9664ee683b598fadb457992",
+                            "top_aggregate_caption": "a black sailboat",
+                            "probability": 0.3841391686492714,
+                            "similarity": 0.6926552653312683,
+                            "metadata": {
+                                "name": "Schooner",
+                                "staffpickedAt": None,
+                                "viewCount": 844,
+                                "likeCount": 26,
+                                "animationCount": 0,
+                                "description": "",
+                                "faceCount": 7995,
+                                "vertexCount": 5317,
+                                "license": "by",
+                                "publishedAt": "2019-06-26 06:51:11.054891",
+                                "createdAt": "2019-06-26 06:46:39.725488",
+                                "isAgeRestricted": False,
+                                "userId": "0c477a42672142baadcefe9cc41845d2",
+                                "userName": "Tobias.De.Maine",
+                            },
                         },
                     ]
                 }
@@ -230,27 +216,7 @@ async def similarity(
     Perform similarity search over a query and grab relevant metadata
     """
     results = await app.state.model.search(query, top_k=top_k)
-    match_df = await query_db_match(
-        app.state.model.database_path, list(results), table_name="combined"
-    )
-
-    # Pack records into a datastructure to return to user
-    records = []
-    for match, group_df in sorted(
-        match_df.groupby("top_aggregate_caption"),
-        key=lambda x: results[x[0]],
-        reverse=True,
-    ):
-        similarity = results[match]
-        group_dict = group_df.to_dict(orient="records")
-        items = [
-            ObjaverseItemResult(metadata=dict(ObjaverseMetadataResult(**i)), **i)  # type: ignore
-            for i in group_dict
-        ]
-
-        records.append({"match": match, "similarity": similarity, "items": items})
-
-    return records
+    return list(map(reformat_results, results))
 
 
 @app.get(
@@ -268,13 +234,10 @@ async def glb(
     Perform similarity search over a query and grab relevant metadata
     """
     results = await app.state.model.search(query, top_k=100)
-    match_df = await query_db_match(app.state.model.database_path, list(results))
 
-    # Grab a random item from the objects weighted by the softmax probability
-    weights = softmax(
-        match_df.top_aggregate_caption.map(results) * match_df.probability
-    )
-    selection = random.choices(match_df.object_uid.tolist(), weights=weights)
+    # Grab a random item from the objects weighted by the similarity score
+    weights = softmax([i["similarity"] for i in results])
+    selection = random.choices([i["object_uid"] for i in results], weights=weights)
 
     # Download from objaverse
     glb_map = await run_in_threadpool(objaverse.load_objects, selection)

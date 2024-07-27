@@ -1,4 +1,4 @@
-from typing import Dict, Optional
+from typing import Any, Dict, Tuple
 
 import faiss
 import numpy as np
@@ -7,6 +7,7 @@ from sentence_transformers import SentenceTransformer
 from starlette.concurrency import run_in_threadpool
 
 from .abc import SimilarityBase
+from .db import query_db_match
 from .utils import check_compatibility
 
 
@@ -22,7 +23,7 @@ class BruteForceSimilarity(SimilarityBase):
         The file path to the semicolon delimited file containing captions
     database_path: str
         Location of the populated database file
-    embeddings: np.ndarray, optional
+    embeddings: np.ndarray
         Precomputed embeddings for the captions.
     sentence_transformer_model: str
         The name of the model to use from sentence transformers
@@ -47,22 +48,15 @@ class BruteForceSimilarity(SimilarityBase):
         self,
         captions_file: str,
         database_path: str,
-        embeddings: Optional[np.ndarray] = None,
+        embeddings: np.ndarray,
         sentence_transformer_model: str = "all-MiniLM-L6-v2",
     ) -> None:
         self.captions_file = captions_file
         self.database_path = database_path
+        self.embeddings = embeddings
         self.df = pd.read_csv(captions_file, delimiter=";")
         self.sentence_transformer_model = sentence_transformer_model
         self.model = SentenceTransformer(sentence_transformer_model)
-        if isinstance(embeddings, np.ndarray):
-            self.embeddings = embeddings
-        else:
-            self.embeddings = np.array(
-                self.model.encode(
-                    list(self.df.top_aggregate_caption), show_progress_bar=True
-                )
-            )
 
         check_compatibility(self.df, self.embeddings, self.model)
 
@@ -83,12 +77,25 @@ class BruteForceSimilarity(SimilarityBase):
         Dict[str, float]
             The top captions and their similarity scores
         """
-        return await run_in_threadpool(self.search_sync, query, top_k)
 
-    def search_sync(self, query: str, top_k: int = 10) -> Dict[str, float]:
+        key_map = await run_in_threadpool(self.search_sync, query, top_k)
+
+        db_indices = list(map(str, key_map.keys()))
+        result_df = await query_db_match(
+            self.database_path,
+            match_list=db_indices,
+            table_name="combined",
+            col_name="rowid",
+        )
+
+        result_df["similarity"] = list(key_map.values())
+
+        return result_df.drop("rowid", axis=1).to_dict(orient="records")
+
+    def search_sync(self, query: str, top_k: int = 10) -> Dict[int, float]:
         """
         This method searches for the most similar captions to a given query
-        and returns a dictionary containing the captions and their similarity scores.
+        and returns a dictionary containing the index and their similarity scores.
 
         Parameters
         ==========
@@ -99,15 +106,14 @@ class BruteForceSimilarity(SimilarityBase):
 
         Returns
         =======
-        Dict[str, float]
+        Dict[int, float]
             The top captions and their similarity scores
         """
         qx = np.array(self.model.encode([query]))
         sim_arr = np.array(self.model.similarity(qx, self.embeddings))[0]
 
-        di = dict(zip(sim_arr, self.df.top_aggregate_caption))
+        di = dict(zip(sim_arr, self.df.index + 1))
         top_arr = np.sort(np.unique(sim_arr))[::-1][:top_k]
-
         return {di[i]: float(i) for i in top_arr}
 
 
@@ -121,7 +127,7 @@ class IVFSimilarity(SimilarityBase):
         The file path to the semicolon delimited file containing captions
     database_path: str
         Location of the populated database file
-    embeddings: np.ndarray, optional
+    embeddings: np.ndarray
         Precomputed embeddings for the captions.
     sentence_transformer_model: str
         The name of the model to use from sentence transformers
@@ -148,7 +154,7 @@ class IVFSimilarity(SimilarityBase):
         self,
         captions_file: str,
         database_path: str,
-        embeddings: Optional[np.ndarray] = None,
+        embeddings: np.ndarray,
         sentence_transformer_model: str = "all-MiniLM-L6-v2",
     ) -> None:
         self.captions_file = captions_file
@@ -156,14 +162,6 @@ class IVFSimilarity(SimilarityBase):
         self.df = pd.read_csv(captions_file, delimiter=";")
         self.sentence_transformer_model = sentence_transformer_model
         self.model = SentenceTransformer(sentence_transformer_model)
-
-        if not isinstance(embeddings, np.ndarray):
-            embeddings = np.array(
-                self.model.encode(
-                    list(self.df.top_aggregate_caption),
-                    show_progress_bar=True,
-                )
-            )
 
         self.quantizer = faiss.IndexScalarQuantizer(
             embeddings.shape[-1],
@@ -180,10 +178,9 @@ class IVFSimilarity(SimilarityBase):
 
         check_compatibility(self.df, embeddings, self.model)
 
-    async def search(self, query: str, top_k: int = 10) -> Dict[str, float]:
+    async def search(self, query: str, top_k: int = 10) -> Dict[str, Any]:
         """
-        Async version of search function. Runs the similarity search under
-        a threadpool
+        Finds the most similar captions to a given query and returns the
 
         Parameters
         ==========
@@ -197,12 +194,22 @@ class IVFSimilarity(SimilarityBase):
         Dict[str, float]
             The top captions and their similarity scores
         """
-        return await run_in_threadpool(self.search_sync, query, top_k)
+        dist, ind = await run_in_threadpool(self.search_index, query, top_k)
 
-    def search_sync(self, query: str, top_k: int = 10) -> Dict[str, float]:
+        db_indices = list((ind[0] + 1).astype(str))
+        result_df = await query_db_match(
+            self.database_path, db_indices, table_name="combined", col_name="rowid"
+        )
+        result_df["similarity"] = dist[0]
+
+        return result_df.drop("rowid", axis=1).to_dict(orient="records")
+
+    def search_index(
+        self, query: str, top_k: int = 10
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """
         This method searches for the most similar captions to a given query
-        and returns a dictionary containing the captions and their similarity scores.
+        and returns tuple containing their distance scores and indices.
 
         Parameters
         ==========
@@ -213,18 +220,10 @@ class IVFSimilarity(SimilarityBase):
 
         Returns
         =======
-        Dict[str, float]
-            The top captions and their similarity scores
+        Tuple[np.ndarray, np.ndarray]
+            A tuple containing the distance and indices
         """
         qx = self.model.encode([query])
         faiss.normalize_L2(qx)
 
-        dist, ind = self.index.search(qx, top_k * 10)
-        found_captions = [self.df.top_aggregate_caption[i] for i in ind[0]]
-
-        if len(set(found_captions)) < top_k:
-            dist, ind = self.index.search(qx, top_k * 100)
-            found_captions = [self.df.top_aggregate_caption[i] for i in ind[0]]
-
-        results = dict(zip(found_captions, [float(i) for i in dist[0]]))
-        return dict(sorted(results.items(), key=lambda x: x[1], reverse=True)[:top_k])
+        return self.index.search(qx, top_k)

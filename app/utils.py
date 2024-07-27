@@ -2,38 +2,49 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import TYPE_CHECKING, Sized
+import sqlite3
+from typing import TYPE_CHECKING, Dict, Sized
 
 import numpy as np
-import pandas as pd
 from sentence_transformers import SentenceTransformer
 from starlette.concurrency import run_in_threadpool
 
 if TYPE_CHECKING:
     from .abc import SimilarityBase
+    from .models import ObjaverseItemResult
+
 logger = logging.getLogger("uvicorn")
 
 
 def create_embeddings(
-    captions_file: str, embeddings_file: str, sentence_transformer_model: str
+    database_path: str, embeddings_file: str, sentence_transformer_model: str
 ) -> None:
     """
     Create sentence embeddings from a CSV file of captions and save them to a file.
 
     Parameters
     ==========
-    captions_file: str
-        The file path to the captions data. Must a semicolon delimeted.
+    database_path: str
+        Path to the database file to query for features use to generate embeddings
     embeddings_path: str
         A file path to save to embeddings to
     sentence_transformer_model: str
         The name of the sentence transformer model to build embeddings from.
     """
-    df = pd.read_csv(captions_file, delimiter=";")
+    with sqlite3.connect(database_path) as db:
+        res = db.execute("""
+            SELECT rowid, CONCAT(
+                top_aggregate_caption, ', ',  name, ', ', description
+            )
+            FROM combined
+            ORDER BY rowid
+        """).fetchall()
+        full_captions = [i[1] for i in res]
+
     model = SentenceTransformer(sentence_transformer_model)
 
     logger.info("Creating embeddings")
-    embeddings = model.encode(list(df.top_aggregate_caption), show_progress_bar=True)
+    embeddings = model.encode(full_captions, show_progress_bar=True)
 
     logger.info(f"Saving Embeddings to {embeddings_file}")
     np.save(embeddings_file, embeddings)
@@ -57,6 +68,8 @@ async def create_similarity_model(
     ==========
     captions_file: str
         The file path to the captions data used for creating the similarity model.
+    database_path: str
+        The path to the database file containing captions and objaverse metadata
     embeddings_path: str
         The file path where embeddings should be saved or loaded from.
     sentence_transformer_model: str
@@ -84,7 +97,7 @@ async def create_similarity_model(
     if not os.path.isfile(embeddings_file):
         await run_in_threadpool(
             create_embeddings,
-            captions_file=captions_file,
+            database_path=database_path,
             embeddings_file=embeddings_file,
             sentence_transformer_model=sentence_transformer_model,
         )
@@ -151,3 +164,38 @@ def check_compatibility(
                 ]
             )
         )
+
+
+def reformat_results(data: Dict) -> ObjaverseItemResult:
+    """
+    Reformat a dictionary by keeping specific keys at the top level
+    and moving the remaining keys into a nested 'metadata' dictionary.
+
+    Parameters
+    ==========
+    data: Dict:
+        The original dictionary to be reformatted.
+
+    Returns
+    =======
+    Dict:
+        A new dictionary with 'object_uid', 'top_aggregate_caption',
+        'probability' and 'similarity' as top-level keys, and the remaining keys
+        inside a nested 'metadata' dictionary.
+
+    Raises
+    ======
+    ValueError
+        If the keys do not exist in the original dictionary.
+    """
+    top_level_keys = {
+        "object_uid",
+        "top_aggregate_caption",
+        "probability",
+        "similarity",
+    }
+    new_dict = {key: data[key] for key in top_level_keys}
+    new_dict["metadata"] = {
+        key: value for key, value in data.items() if key not in top_level_keys
+    }
+    return new_dict

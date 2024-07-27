@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Optional
 
 from pydantic import BaseModel
 
@@ -29,10 +29,5 @@ class ObjaverseItemResult(BaseModel):
     object_uid: str
     top_aggregate_caption: str
     probability: float
-    metadata: ObjaverseMetadataResult
-
-
-class ObjaverseSimilarityResult(BaseModel):
-    match: str
     similarity: float
-    items: List[ObjaverseItemResult]
+    metadata: ObjaverseMetadataResult
