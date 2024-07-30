@@ -174,7 +174,7 @@ class IVFSimilarity(SimilarityBase):
         faiss.normalize_L2(embeddings)
         self.index.train(embeddings)
         self.index.add(embeddings)
-        self.index.nprobe = 16
+        self.index.nprobe = 4
 
         check_compatibility(self.df, embeddings, self.model)
 
@@ -227,3 +227,60 @@ class IVFSimilarity(SimilarityBase):
         faiss.normalize_L2(qx)
 
         return self.index.search(qx, top_k)
+
+
+class HNSWSimilarity(IVFSimilarity):
+    """
+    Uses faiss inverted file index to find similar captions.
+
+    Parameters
+    ==========
+    captions_file: str
+        The file path to the semicolon delimited file containing captions
+    database_path: str
+        Location of the populated database file
+    embeddings: np.ndarray
+        Precomputed embeddings for the captions.
+    sentence_transformer_model: str
+        The name of the model to use from sentence transformers
+
+    Attributes
+    ==========
+    captions_file: str
+        The file path to the captions CSV file
+    database_path: str
+        Location of the populated database file
+    df: pandas.DataFrame
+        DataFrame containing the data from the CSV file.
+    sentence_transformer_model: str
+        The name of the model used from sentence transformers
+    model: SentenceTransformer
+        SentenceTranformer model for generating embeddings.
+    index: faiss.IndexHNSWFlat
+        Faiss HNSW index which computes nearest neighbor search
+    """
+
+    def __init__(
+        self,
+        captions_file: str,
+        database_path: str,
+        embeddings: np.ndarray,
+        sentence_transformer_model: str = "all-MiniLM-L6-v2",
+    ) -> None:
+        self.captions_file = captions_file
+        self.database_path = database_path
+        self.df = pd.read_csv(captions_file, delimiter=";")
+        self.sentence_transformer_model = sentence_transformer_model
+        self.model = SentenceTransformer(sentence_transformer_model)
+
+        self.index = faiss.IndexHNSWFlat(
+            embeddings.shape[-1], 16, faiss.METRIC_INNER_PRODUCT
+        )
+        self.index.hnsw.efConstruction = 200
+        faiss.normalize_L2(embeddings)
+        self.index.train(embeddings)
+        self.index.add(embeddings)
+
+        self.index.hnsw.efSearch = 50
+
+        check_compatibility(self.df, embeddings, self.model)

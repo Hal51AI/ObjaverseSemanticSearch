@@ -214,6 +214,35 @@ async def similarity(
 ):
     """
     Perform similarity search over a query and grab relevant metadata
+
+    Schema
+    ======
+    | Schema                  | Type   | Description                                          |
+    |-------------------------|--------|------------------------------------------------------|
+    | `object_uid`            | UUID   | Unique identifier for objaverse assets               |
+    | `top_aggregate_caption` | String | Caption generated from classifier                    |
+    | `probability`           | Float  | The confidence/probability score from the classifier |
+    | `similarity`            | Float  | The similarity score between the query               |
+    | `metadata`              | Dict   | Asset information metadata                           |
+
+    Metadata
+    ========
+    | Schema            | Type             | Description                                                                         |
+    |-------------------|------------------|-------------------------------------------------------------------------------------|
+    | `name`            | String           | The original name of the asset made by the author                                   |
+    | `staffpickedAt`   | Datetime or null | High quality assets which have been selected by staff                               |
+    | `viewCount`       | Integer          | The amount of times asset was viewed by another user at the time of data collection |
+    | `likeCount`       | Integer          | The amount of times asset was liked by another user at the time of data collection  |
+    | `animationCount`  | Integer          | The number of animations for the asset                                              |
+    | `description`     | String           | A longer description made by the author                                             |
+    | `faceCount`       | Integer          | The number of faces of the asset                                                    |
+    | `vertexCount`     | Integer          | The number of verticies in the asset                                                |
+    | `license`         | String           | The type of license used by the asset                                               |
+    | `publishedAt`     | Datetime         | The time when the asset was published to the world                                  |
+    | `createdAt`       | Datetime         | The time for which the asset was first created                                      |
+    | `isAgeRestricted` | Boolean          | Whether the asset has been flagged to contain age restricted content                |
+    | `userId`          | UUID             | The sketchfab user id used to query for more user information                       |
+    | `userName`        | String           | The skechfab user name                                                              |
     """
     results = await app.state.model.search(query, top_k=top_k)
     return list(map(reformat_results, results))
