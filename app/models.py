@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 class ObjaverseDownloadItem(BaseModel):
     uid: str
-    data: str
+    data: bytes
 
 
 class ObjaverseMetadataResult(BaseModel):
@@ -31,3 +31,11 @@ class ObjaverseItemResult(BaseModel):
     probability: float
     similarity: float
     metadata: ObjaverseMetadataResult
+
+
+class LicenseInfo(BaseModel):
+    label: str
+    fullName: str
+    requirements: str
+    url: str
+    slug: str
