@@ -23,6 +23,7 @@ class ObjaverseMetadataResult(BaseModel):
     isAgeRestricted: bool
     userId: str
     userName: str
+    userProfile: str
 
 
 class ObjaverseItemResult(BaseModel):

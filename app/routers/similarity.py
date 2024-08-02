@@ -44,6 +44,7 @@ router = APIRouter()
                                 "isAgeRestricted": False,
                                 "userId": "49dd921047ae4da28aeaaa213e9a5d8a",
                                 "userName": "jondameron5",
+                                "userProfile": "https://sketchfab.com/jondameron5",
                             },
                         },
                         {
@@ -66,6 +67,7 @@ router = APIRouter()
                                 "isAgeRestricted": False,
                                 "userId": "0c477a42672142baadcefe9cc41845d2",
                                 "userName": "Tobias.De.Maine",
+                                "userProfile": "https://sketchfab.com/Tobias.De.Maine",
                             },
                         },
                     ]
@@ -106,6 +108,7 @@ async def similarity(search: List[Dict] = Depends(similarity_search_query)):
     | `isAgeRestricted` | Boolean          | Whether the asset has been flagged to contain age restricted content                |
     | `userId`          | UUID             | The sketchfab user id used to query for more user information                       |
     | `userName`        | String           | The skechfab user name                                                              |
+    | `userProfile`     | String           | A link to the user profile                                                          |
     """
     return list(map(reformat_results, search))
 

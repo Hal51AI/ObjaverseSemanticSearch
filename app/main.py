@@ -5,7 +5,7 @@ from fastapi import FastAPI
 
 from .config import settings
 from .db import create_db
-from .routers import licenses, objaverse, similarity
+from .routers import licenses, objaverse, similarity, users
 from .utils import create_similarity_model
 
 
@@ -49,4 +49,5 @@ app = FastAPI(
 
 app.include_router(similarity.router, prefix="/similarity", tags=["similarity"])
 app.include_router(objaverse.router, prefix="/objaverse", tags=["objaverse"])
+app.include_router(users.router, prefix="/users", tags=["users"])
 app.include_router(licenses.router, prefix="/licenses", tags=["licenses"])

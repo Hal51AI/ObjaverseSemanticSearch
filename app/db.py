@@ -69,13 +69,24 @@ async def create_db(captions_file: str, database_path: str) -> str:
                 isAgeRestricted INTEGER,
                 userId          TEXT,
                 userName        TEXT,
+                userProfile     TEXT AS ('https://sketchfab.com/' || userName),
                 FOREIGN KEY (uid)
                     REFERENCES objaverse(object_uid)
             );
         """)
         await conn.execute("""
             CREATE INDEX IF NOT EXISTS idx_description ON metadata (
-                description 
+                description
+            );
+        """)
+        await conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_user_id ON metadata (
+                userID
+            );
+        """)
+        await conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_user_name ON metadata (
+                userName
             );
         """)
         # Create a view to merge these two tables
@@ -99,7 +110,8 @@ async def create_db(captions_file: str, database_path: str) -> str:
                 meta.createdAt,
                 meta.isAgeRestricted,
                 meta.userId,
-                meta.userName
+                meta.userName,
+                meta.userProfile
             FROM
                 objaverse obj
             JOIN
