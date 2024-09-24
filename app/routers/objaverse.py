@@ -1,5 +1,5 @@
 import base64
-from typing import Annotated, List
+from typing import Annotated, Dict, List
 
 import aiofiles
 import objaverse
@@ -8,6 +8,8 @@ from starlette.concurrency import run_in_threadpool
 
 from ..db import query_db_match
 from ..models import ObjaverseDownloadItem
+
+OBJECT_PATHS = objaverse._load_object_paths()
 
 router = APIRouter()
 
@@ -90,3 +92,33 @@ async def download(
             )
 
     return encoded_files
+
+
+@router.get(
+    "/paths",
+    response_model=Dict[str, str],
+    response_description="A key/value pair of object uid's and download url's",
+)
+async def paths(
+    objaverse_ids: Annotated[
+        List[str],
+        Query(
+            ...,
+            description="List of objaverse ids",
+        ),
+    ],
+):
+    """
+    Determine the urls to the glb files in the objaverse repository
+    """
+    missing_items = [item for item in objaverse_ids if item not in OBJECT_PATHS]
+
+    if any(missing_items):
+        raise HTTPException(
+            status_code=404,
+            detail=f"The following objaverse_ids do not exist: {list(missing_items)}",
+        )
+    return {
+        item: f"https://huggingface.co/datasets/allenai/objaverse/resolve/main/{OBJECT_PATHS[item]}"
+        for item in objaverse_ids
+    }

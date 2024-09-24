@@ -10,3 +10,4 @@ pandas-stubs
 pydantic_settings
 sentence-transformers
 types-aiofiles
+uvicorn
