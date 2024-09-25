@@ -190,6 +190,7 @@ def reformat_results(data: Dict) -> Dict[str, Any]:
         "top_aggregate_caption",
         "probability",
         "similarity",
+        "download_url",
     }
     new_dict = {key: data[key] for key in top_level_keys}
     new_dict["metadata"] = {

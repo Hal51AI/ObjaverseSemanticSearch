@@ -1,5 +1,5 @@
 from itertools import repeat
-from typing import List
+from typing import Dict, List
 
 import aiocsv
 import aiofiles
@@ -89,6 +89,18 @@ async def create_db(captions_file: str, database_path: str) -> str:
                 userName
             );
         """)
+        # Create paths table
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS paths (
+                uid  TEXT PRIMARY KEY,
+                path TEXT
+            );
+        """)
+        await conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_paths ON paths (
+                uid
+            );
+        """)
         # Create a view to merge these two tables
         await conn.execute("""
             CREATE VIEW IF NOT EXISTS combined AS
@@ -97,6 +109,7 @@ async def create_db(captions_file: str, database_path: str) -> str:
                 obj.object_uid,
                 obj.top_aggregate_caption,
                 obj.probability,
+                'https://huggingface.co/datasets/allenai/objaverse/resolve/main/glbs/' || p.path || '/' || p.uid || '.glb' AS download_url,
                 meta.name,
                 meta.staffpickedAt,
                 meta.viewCount,
@@ -116,8 +129,10 @@ async def create_db(captions_file: str, database_path: str) -> str:
                 objaverse obj
             JOIN
                 metadata meta
-            ON
-                obj.object_uid = meta.uid;
+                ON obj.object_uid = meta.uid
+            JOIN
+                paths p
+                ON obj.object_uid = p.uid;
         """)
 
         # Grab all the uids and table_ from `objaverse` table
@@ -138,6 +153,14 @@ async def create_db(captions_file: str, database_path: str) -> str:
             PRAGMA table_info(metadata);
         """)
 
+        # Grab all uids and table_info from `paths` table
+        paths_uids = await conn.execute_fetchall("""
+            SELECT uid FROM paths;
+        """)
+        paths_uids = [i[0] for i in paths_uids]
+        paths_table_info = await conn.execute_fetchall("""
+            PRAGMA table_info(paths);
+        """)
         # Commit all changes
         await conn.commit()
 
@@ -190,6 +213,20 @@ async def create_db(captions_file: str, database_path: str) -> str:
                 annotation_items,
             )
 
+            await conn.commit()
+
+    if not captions_file_uids.issubset(set(paths_uids)):
+        paths_insert_items = _load_objaverse_paths(list(captions_file_uids))
+        async with aiosqlite.connect(database_path) as conn:
+            await conn.executemany(
+                f"""
+                INSERT OR IGNORE INTO
+                    paths
+                VALUES
+                    ({','.join(repeat("?", len(list(paths_table_info))))})
+            """,
+                list(paths_insert_items.items()),
+            )
             await conn.commit()
 
     return database_path
@@ -275,3 +312,25 @@ def _subset_annotations(annotations: dict) -> List[dict]:
         metadata.append(items)
 
     return metadata
+
+
+def _load_objaverse_paths(uids: List[str]) -> Dict[str, str]:
+    """
+    This function loads a subset of object paths from the objaverse
+    based on a list of unique identifiers (uids)
+
+    Parameters
+    ==========
+    uids: list[str]:
+        A list of uids. Each uid corresponds to a specific object
+        within the objaverse dataset.
+
+    Returns
+    =======
+    dict[str, str]
+        A dictionary where each key is a UID from the input uids list,
+        and each value is the corresponding path component
+    """
+    paths = objaverse._load_object_paths()
+    paths = {k: v.split("/")[1] for k, v in paths.items()}
+    return {key: paths[key] for key in uids if key in paths}

@@ -29,6 +29,7 @@ router = APIRouter()
                             "top_aggregate_caption": "a boat",
                             "probability": 0.439652563952344,
                             "similarity": 0.7142868041992188,
+                            "download_url": "https://huggingface.co/datasets/allenai/objaverse/resolve/main/glbs/000-064/2f0598cba938424688cdd048a90b8339.glb",
                             "metadata": {
                                 "name": "boat",
                                 "staffpickedAt": None,
@@ -52,6 +53,7 @@ router = APIRouter()
                             "top_aggregate_caption": "a black sailboat",
                             "probability": 0.3841391686492714,
                             "similarity": 0.6926552653312683,
+                            "download_url": "https://huggingface.co/datasets/allenai/objaverse/resolve/main/glbs/000-013/56148c53e9664ee683b598fadb457992.glb",
                             "metadata": {
                                 "name": "Schooner",
                                 "staffpickedAt": None,
@@ -88,6 +90,7 @@ async def similarity(search: List[Dict] = Depends(similarity_search_query)):
     | `top_aggregate_caption` | String | Caption generated from classifier                    |
     | `probability`           | Float  | The confidence/probability score from the classifier |
     | `similarity`            | Float  | The similarity score between the query               |
+    | `download_url`          | String | Download url for glb file                            |
     | `metadata`              | Dict   | Asset information metadata                           |
 
     Metadata

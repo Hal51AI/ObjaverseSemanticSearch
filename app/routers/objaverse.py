@@ -9,8 +9,6 @@ from starlette.concurrency import run_in_threadpool
 from ..db import query_db_match
 from ..models import ObjaverseDownloadItem
 
-OBJECT_PATHS = objaverse._load_object_paths()
-
 router = APIRouter()
 
 
@@ -100,6 +98,7 @@ async def download(
     response_description="A key/value pair of object uid's and download url's",
 )
 async def paths(
+    request: Request,
     objaverse_ids: Annotated[
         List[str],
         Query(
@@ -111,14 +110,29 @@ async def paths(
     """
     Determine the urls to the glb files in the objaverse repository
     """
-    missing_items = [item for item in objaverse_ids if item not in OBJECT_PATHS]
+    match_df = await query_db_match(
+        request.app.state.model.database_path,
+        match_list=objaverse_ids,
+        table_name="paths",
+        col_name="uid",
+    )
+    missing_items = [
+        item for item in objaverse_ids if item not in match_df["uid"].values
+    ]
 
     if any(missing_items):
         raise HTTPException(
             status_code=404,
             detail=f"The following objaverse_ids do not exist: {list(missing_items)}",
         )
-    return {
-        item: f"https://huggingface.co/datasets/allenai/objaverse/resolve/main/{OBJECT_PATHS[item]}"
-        for item in objaverse_ids
-    }
+
+    match_df = match_df.assign(
+        download_url=(
+            "https://huggingface.co/datasets/allenai/objaverse/resolve/main/glbs/"
+            + match_df["path"]
+            + "/"
+            + match_df["uid"]
+            + ".glb"
+        )
+    )
+    return match_df.set_index("uid")["download_url"].to_dict()

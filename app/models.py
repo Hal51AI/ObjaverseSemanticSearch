@@ -31,6 +31,7 @@ class ObjaverseItemResult(BaseModel):
     top_aggregate_caption: str
     probability: float
     similarity: float
+    download_url: str
     metadata: ObjaverseMetadataResult
 
 
