@@ -1,3 +1,4 @@
+aiocache
 aiocsv
 aiofiles
 aiosqlite

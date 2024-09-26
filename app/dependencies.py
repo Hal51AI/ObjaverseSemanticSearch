@@ -1,8 +1,11 @@
 from typing import Annotated, Dict, List
 
+from aiocache import Cache, cached
+from aiocache.serializers import JsonSerializer
 from fastapi import Query, Request
 
 
+@cached(cache=Cache.MEMORY, serializer=JsonSerializer())
 async def similarity_search_query(
     request: Request,
     query: Annotated[

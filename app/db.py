@@ -225,7 +225,7 @@ async def create_db(captions_file: str, database_path: str) -> str:
                 VALUES
                     ({','.join(repeat("?", len(list(paths_table_info))))})
             """,
-                list(paths_insert_items.items()),
+                paths_insert_items.items(),
             )
             await conn.commit()
 
