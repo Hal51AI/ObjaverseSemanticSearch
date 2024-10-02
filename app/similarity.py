@@ -284,3 +284,70 @@ class HNSWSimilarity(IVFSimilarity):
         self.index.hnsw.efSearch = 50
 
         check_compatibility(self.df, embeddings, self.model)
+
+
+class IVFPQSimilarity(IVFSimilarity):
+    """
+    Uses faiss inverted file index with product quantization to find similar captions.
+
+    Parameters
+    ==========
+    captions_file: str
+        The file path to the semicolon delimited file containing captions
+    database_path: str
+        Location of the populated database file
+    embeddings: np.ndarray
+        Precomputed embeddings for the captions.
+    sentence_transformer_model: str
+        The name of the model to use from sentence transformers
+
+    Attributes
+    ==========
+    captions_file: str
+        The file path to the captions CSV file
+    database_path: str
+        Location of the populated database file
+    df: pandas.DataFrame
+        DataFrame containing the data from the CSV file.
+    sentence_transformer_model: str
+        The name of the model used from sentence transformers
+    model: SentenceTransformer
+        SentenceTranformer model for generating embeddings.
+    index: faiss.IndexIVFPQ
+        Faiss IVFPQ index which computes nearest neighbor search
+    """
+
+    def __init__(
+        self,
+        captions_file: str,
+        database_path: str,
+        embeddings: np.ndarray,
+        sentence_transformer_model: str = "all-MiniLM-L6-v2",
+    ) -> None:
+        self.captions_file = captions_file
+        self.database_path = database_path
+        self.df = pd.read_csv(captions_file, delimiter=";")
+        self.sentence_transformer_model = sentence_transformer_model
+        self.model = SentenceTransformer(sentence_transformer_model)
+
+        # IVFPQ parameters
+        nlist = 512  # number of clusters
+        m = 8  # number of subquantizers
+        nbits = 8  # bits per subquantizer
+
+        # Create and train the index
+        quantizer = faiss.IndexScalarQuantizer(
+            embeddings.shape[1],
+            faiss.ScalarQuantizer.QT_fp16,
+            faiss.METRIC_INNER_PRODUCT,
+        )
+        self.index = faiss.IndexIVFPQ(
+            quantizer, embeddings.shape[1], nlist, m, nbits, faiss.METRIC_INNER_PRODUCT
+        )
+
+        faiss.normalize_L2(embeddings)
+        self.index.train(embeddings)
+        self.index.add(embeddings)
+        self.index.nprobe = 4  # number of clusters to visit during search
+
+        check_compatibility(self.df, embeddings, self.model)
