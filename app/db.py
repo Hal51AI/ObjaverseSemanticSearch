@@ -1,5 +1,9 @@
+import gzip
+import json
+import os
+import urllib
 from itertools import repeat
-from typing import Dict, List
+from typing import Any, Dict, List, Optional
 
 import aiocsv
 import aiofiles
@@ -8,6 +12,7 @@ import ciso8601
 import objaverse
 import pandas as pd
 from starlette.concurrency import run_in_threadpool
+from tqdm import tqdm
 
 
 async def create_db(captions_file: str, database_path: str) -> str:
@@ -195,8 +200,8 @@ async def create_db(captions_file: str, database_path: str) -> str:
 
     # Check if captions file and metadata table have the same values or else populate
     if not captions_file_uids.issubset(set(metadata_uids)):
-        annotations = _subset_annotations(
-            await run_in_threadpool(objaverse.load_annotations, captions_file_uids)
+        annotations = await run_in_threadpool(
+            _load_annotations, list(captions_file_uids)
         )
 
         async with aiosqlite.connect(database_path) as conn:
@@ -334,3 +339,47 @@ def _load_objaverse_paths(uids: List[str]) -> Dict[str, str]:
     paths = objaverse._load_object_paths()
     paths = {k: v.split("/")[1] for k, v in paths.items()}
     return {key: paths[key] for key in uids if key in paths}
+
+
+def _load_annotations(uids: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+    """
+    Load the full metadata of all objects in the dataset.
+
+    Code was modified from
+        https://pypi.org/project/objaverse
+
+    Args:
+        uids: A list of uids with which to load metadata. If None, it loads
+        the metadata for all uids.
+
+    Returns:
+        A dictionary mapping the uid to the metadata.
+    """
+    BASE_PATH = os.path.join(os.path.expanduser("~"), ".objaverse")
+    _VERSIONED_PATH = os.path.join(BASE_PATH, "hf-objaverse-v1")
+
+    metadata_path = os.path.join(_VERSIONED_PATH, "metadata")
+    object_paths = objaverse._load_object_paths()
+    dir_ids = tqdm(
+        set(object_paths[uid].split("/")[1] for uid in uids)
+        if uids is not None
+        else [f"{i // 1000:03d}-{i % 1000:03d}" for i in range(160)]
+    )
+
+    out = []
+    for i_id in dir_ids:
+        json_file = f"{i_id}.json.gz"
+        local_path = os.path.join(metadata_path, json_file)
+        if not os.path.exists(local_path):
+            hf_url = f"https://huggingface.co/datasets/allenai/objaverse/resolve/main/metadata/{i_id}.json.gz"
+            # wget the file and put it in local_path
+            os.makedirs(os.path.dirname(local_path), exist_ok=True)
+            urllib.request.urlretrieve(hf_url, local_path)
+        with gzip.open(local_path, "rb") as f:
+            data = json.load(f)
+        if uids is not None:
+            data = {uid: data[uid] for uid in uids if uid in data}
+        out.extend(_subset_annotations(data))
+        if uids is not None and len(out) == len(uids):
+            break
+    return out

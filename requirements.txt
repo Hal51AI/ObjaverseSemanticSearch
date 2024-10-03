@@ -11,4 +11,5 @@ pandas-stubs
 pydantic_settings
 sentence-transformers
 types-aiofiles
+types-tqdm
 uvicorn
