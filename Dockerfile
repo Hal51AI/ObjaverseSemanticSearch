@@ -9,8 +9,8 @@ RUN --mount=type=bind,source=requirements.txt,target=/app/requirements.txt : \
     && pip install --no-cache -r requirements.txt
 
 COPY . /app
-COPY data/embeddings.npy /app/data/embeddings.npy
-COPY data/database.sqlite3 /app/data/database.sqlite3
+# COPY data/embeddings.npy /app/data/embeddings.npy
+# COPY data/database.sqlite3 /app/data/database.sqlite3
 
 EXPOSE 8000
 
