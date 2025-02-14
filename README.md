@@ -44,6 +44,21 @@ The easiest way to run is with docker compose, run
 docker compose up
 ```
 
+# Configuration
+
+A sample configuration file is provided as `.env.example` Copy it to `.env` to customize your settings:
+
+```bash
+cp .env.example .env
+```
+
+Set the following variables in the configuration file in `.env`:
+- `CAPTIONS_FILE`: Path to the captions CSV file.
+- `DATABASE_PATH`: Path to the SQLite database.
+- `EMBEDDINGS_FILE`: Precomputed embeddings file.
+- `SENTENCE_TRANSFORMER_MODEL`: Model used for embeddings (default: `all-MiniLM-L6-v2`).
+- `SIMILARITY_SEARCH`: Choose the search method (e.g., `BruteForceSimilarity`, `IVFSimilarity`, `IVFPQSimilarity`, etc.).
+
 # First Run Setup
 
 On the very first run, the application checks if both the embeddings and database files exist at paths specified by the environment variables `EMBEDDINGS_PATH` and `DATABASE_PATH`.
@@ -54,15 +69,6 @@ On the very first run, the application checks if both the embeddings and databas
 Ensure that both `EMBEDDINGS_PATH` and `DATABASE_PATH` are correctly set in your environment variables or the `.env` file before the first run.
 
 > **Warning:** Creating embeddings and initializing the database might take a significant amount of time depending on your CPU power and dataset size. Please ensure that your machine has sufficient resources to handle the process.
-
-# Configuration
-
-Set the following environment variables or update the configuration in `.env`:
-- `CAPTIONS_FILE`: Path to the captions CSV file.
-- `DATABASE_PATH`: Path to the SQLite database.
-- `EMBEDDINGS_FILE`: Precomputed embeddings file.
-- `SENTENCE_TRANSFORMER_MODEL`: Model used for embeddings (default: "all-MiniLM-L6-v2").
-- `SIMILARITY_SEARCH`: Choose the search method (e.g., `BruteForceSimilarity`, `IVFSimilarity`, `IVFPQSimilarity`, etc.).
 
 # API Endpoints
 
