@@ -44,7 +44,18 @@ The easiest way to run is with docker compose, run
 docker compose up
 ```
 
-## Configuration
+# First Run Setup
+
+On the very first run, the application checks if both the embeddings and database files exist at paths specified by the environment variables `EMBEDDINGS_PATH` and `DATABASE_PATH`.
+
+- If the file at `EMBEDDINGS_PATH` is missing, the application will generate embeddings by processing the designated caption CSV file. This ensures that a new embeddings file is created and stored in the expected location.
+- Similarly, if the file at `DATABASE_PATH` does not exist, the application will initialize a new SQLite database. This process includes setting up the required schema and populating initial metadata for a seamless startup.
+
+Ensure that both `EMBEDDINGS_PATH` and `DATABASE_PATH` are correctly set in your environment variables or the `.env` file before the first run.
+
+> **Warning:** Creating embeddings and initializing the database might take a significant amount of time depending on your CPU power and dataset size. Please ensure that your machine has sufficient resources to handle the process.
+
+# Configuration
 
 Set the following environment variables or update the configuration in `.env`:
 - `CAPTIONS_FILE`: Path to the captions CSV file.
@@ -53,7 +64,7 @@ Set the following environment variables or update the configuration in `.env`:
 - `SENTENCE_TRANSFORMER_MODEL`: Model used for embeddings (default: "all-MiniLM-L6-v2").
 - `SIMILARITY_SEARCH`: Choose the search method (e.g., `BruteForceSimilarity`, `IVFSimilarity`, `IVFPQSimilarity`, etc.).
 
-## API Endpoints
+# API Endpoints
 
 ### Similarity
 - **GET /similarity**  
@@ -81,7 +92,7 @@ Set the following environment variables or update the configuration in `.env`:
 - **GET /licenses/{slug}**  
   Retrieves details for a specific license based on its slug.
 
-## Troubleshooting
+# Troubleshooting
 
 - Ensure that your embeddings file is pre-built and placed at the expected location (`./data`).
 - Check database connectivity if queries return no results.
