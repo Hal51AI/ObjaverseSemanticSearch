@@ -42,6 +42,10 @@ async def create_db(captions_file: str, database_path: str) -> str:
         await conn.execute("""
             PRAGMA synchronous = NORMAL;
         """)
+        await conn.execute("""
+            PRAGMA journal_mode = wal;
+        """)
+        await conn.commit()
         # Create objaverse table
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS objaverse (
@@ -191,7 +195,7 @@ async def create_db(captions_file: str, database_path: str) -> str:
                 INSERT OR IGNORE INTO
                     objaverse
                 VALUES
-                    ({','.join(repeat("?", len(list(objaverse_table_info))))})
+                    ({",".join(repeat("?", len(list(objaverse_table_info))))})
             """,
                 objaverse_insert_items,
             )
@@ -228,7 +232,7 @@ async def create_db(captions_file: str, database_path: str) -> str:
                 INSERT OR IGNORE INTO
                     paths
                 VALUES
-                    ({','.join(repeat("?", len(list(paths_table_info))))})
+                    ({",".join(repeat("?", len(list(paths_table_info))))})
             """,
                 paths_insert_items.items(),
             )
