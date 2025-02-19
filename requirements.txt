@@ -4,7 +4,7 @@ aiofiles
 aiosqlite
 ciso8601
 faiss-cpu
-fastapi
+fastapi[standard]
 gunicorn
 objaverse
 pandas-stubs
