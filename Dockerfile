@@ -6,7 +6,7 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
 RUN --mount=type=bind,source=requirements.txt,target=/app/requirements.txt : \
-    && pip install --no-cache -r requirements.txt
+    && pip install --no-cache-dir -r requirements.txt
 
 COPY . /app
 # COPY data/embeddings.npy /app/data/embeddings.npy
